@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  web:
+    build: . 
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:123456789@db:5432/DB1
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:14
+    container_name: fastapi_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456789
+      POSTGRES_DB: DB1
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
