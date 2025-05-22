@@ -6,7 +6,9 @@ from models.auto import Auto
 from models.kunden import Kunden
 from models.vertrag import Vertrag
 from models.zahlung import Zahlung
+from models.user import User
 from datetime import date
+from security.hash import hash_password , verify
 
 # In-memory SQLite setup
 DATABASE_URL = "sqlite:///:memory:"
@@ -79,3 +81,25 @@ def test_create_auto_vertrag_kunde(db):
     assert zahlung.vertragid == vertrag.id
     assert auto.brand == "BMW"
     assert vertrag.kunde.vorname == "Tihan"
+
+
+def test_user(db):
+    user=User(
+        email = "tihanibrahim@hotmail.com",
+        hashed_password = hash_password("123456789tito")
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    
+    # Assertions
+    assert user.id is not None
+    assert user.email == "tihanibrahim@hotmail.com"
+    assert verify("123456789tito", user.hashed_password)
+
+
+
+
+
+    

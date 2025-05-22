@@ -3,6 +3,7 @@ from schemas.auto import AutoBase
 from schemas.vertrag import VertragBase
 from schemas.kunden import KundenBase
 from schemas.zahlung import ZahlungBase
+from schemas.auth_schemas import CreateRequest, TokenData
 import pytest
 from datetime import date
 
@@ -10,6 +11,7 @@ from datetime import date
 # AutoBase schema tests
 # ------------------------------
 
+# Valid AutoBase input
 def test_valid_auto_schema():
     auto = AutoBase(
         brand="BMW",
@@ -24,8 +26,8 @@ def test_valid_auto_schema():
     assert auto.preis_pro_stunde == 35
     assert auto.status is True
 
+# Invalid type for jahr (should be int)
 def test_invalid_auto_schema():
-    # jahr should be int, not string
     with pytest.raises(ValidationError):
         AutoBase(
             brand="BMW",
@@ -35,8 +37,8 @@ def test_invalid_auto_schema():
             status=True
         )
 
+# Missing required field 'jahr'
 def test_missing_field_auto_schema():
-    # Missing 'jahr'
     with pytest.raises(ValidationError):
         AutoBase(
             brand="BMW",
@@ -49,6 +51,7 @@ def test_missing_field_auto_schema():
 # KundenBase schema tests
 # ------------------------------
 
+# Valid KundenBase input
 def test_valid_kunde_schema():
     kunde = KundenBase(
         vorname="Tihan",
@@ -63,8 +66,8 @@ def test_valid_kunde_schema():
     assert kunde.handy_nummer == "0947698022"
     assert kunde.email == "titor9424@gmail.com"
 
+# Invalid email format
 def test_invalid_kunde_schema():
-    # Invalid email format
     with pytest.raises(ValidationError):
         KundenBase(
             vorname="Tihan",
@@ -74,8 +77,8 @@ def test_invalid_kunde_schema():
             email="invalid_email"
         )
 
+# Missing fields: handy_nummer and email
 def test_missing_field_kunde_schema():
-    # Missing 'handy_nummer' and 'email'
     with pytest.raises(ValidationError):
         KundenBase(
             vorname="Tihan",
@@ -87,6 +90,7 @@ def test_missing_field_kunde_schema():
 # VertragBase schema tests
 # ------------------------------
 
+# Valid VertragBase input
 def test_valid_vertrag():
     vertrag = VertragBase(
         auto_id=32,
@@ -103,8 +107,8 @@ def test_valid_vertrag():
     assert vertrag.total_preis == 321.2
     assert vertrag.status is True
 
+# Invalid kunden_id (should be int)
 def test_invalid_vertrag_schema():
-    # kunden_id should be int, not string
     with pytest.raises(ValidationError):
         VertragBase(
             auto_id=32,
@@ -115,8 +119,8 @@ def test_invalid_vertrag_schema():
             status=True
         )
 
+# Missing required field 'kunden_id'
 def test_missing_field_vertrag_schema():
-    # Missing 'kunden_id'
     with pytest.raises(ValidationError):
         VertragBase(
             auto_id=32,
@@ -129,6 +133,7 @@ def test_missing_field_vertrag_schema():
 # ZahlungBase schema tests
 # ------------------------------
 
+# Valid ZahlungBase input
 def test_valid_zahlung():
     zahlung = ZahlungBase(
         vertragid=31,
@@ -143,8 +148,8 @@ def test_valid_zahlung():
     assert zahlung.status == "wurde überwiesen"
     assert zahlung.betrag == 300.0
 
+# Invalid type for betrag (should be float)
 def test_invalid_zahlung():
-    # betrag should be float, not string
     with pytest.raises(ValidationError):
         ZahlungBase(
             vertragid=31,
@@ -154,8 +159,8 @@ def test_invalid_zahlung():
             betrag="text"
         )
 
+# Missing required field 'datum'
 def test_missing_field_zahlung():
-    # Missing 'datum'
     with pytest.raises(ValidationError):
         ZahlungBase(
             vertragid=31,
@@ -164,10 +169,73 @@ def test_missing_field_zahlung():
             betrag=300.0
         )
 
+# ------------------------------
+# Auth schema tests
+# ------------------------------
+
+# Valid CreateRequest input
+def test_valid_request():
+    request = CreateRequest(
+        email="loloakiL@gmail.com",
+        password="Abc123456!"
+    )
+    assert request.email == "loloakiL@gmail.com"
+    assert request.password == "Abc123456!"
+
+# Invalid email format
+def test_invalid_request():
+    with pytest.raises(ValidationError):
+        CreateRequest(
+            email="invalid-email",
+            password="123456789"
+        )
+
+# Missing password field
+def test_missing_field_request():
+    with pytest.raises(ValidationError):
+        CreateRequest(
+            email="loloakiL@gmail.com"
+        )
+
+# Valid password with all required rules
+def test_valid_password():
+    request = CreateRequest(email="test@example.com", password="Abcd1234!")
+    assert request.password == "Abcd1234!"
+
+# Password too short
+def test_password_too_short():
+    with pytest.raises(ValidationError):
+        CreateRequest(email="test@example.com", password="A1b!")
+
+# Password missing uppercase letter
+def test_password_missing_uppercase():
+    with pytest.raises(ValidationError):
+        CreateRequest(email="test@example.com", password="abcd1234!")
+
+# Password missing special character
+def test_password_missing_special_char():
+    with pytest.raises(ValidationError):
+        CreateRequest(email="test@example.com", password="Abcd1234")
+
+# Password missing digit
+def test_password_missing_digit():
+    with pytest.raises(ValidationError):
+        CreateRequest(email="test@example.com", password="Abcdefg!")
 
 
 
+def test_valid_token_data():
+    # Test with valid email and id
+    token = TokenData(email="user@example.com", id=1)
+    assert token.email == "user@example.com"
+    assert token.id == 1
 
-  
+def test_invalid_email():
+    # Test with invalid email format, should raise ValidationError
+    with pytest.raises(ValidationError):
+        TokenData(email="invalid-email", id=1)
 
-    
+def test_invalid_id_type():
+    # Test with invalid id type (string instead of int), should raise ValidationError
+    with pytest.raises(ValidationError):
+        TokenData(email="user@example.com", id="not_an_int")
