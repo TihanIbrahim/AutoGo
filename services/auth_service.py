@@ -18,7 +18,8 @@ def create_user_service(request: CreateRequest, db: Session):
     # Create a new user with hashed password
     new_user = User(
         email=request.email,
-        hashed_password=hash_password(request.password)
+        hashed_password=hash_password(request.password),
+        role="customer"
     )
     logger.info(f"Benutzer mit E-Mail {request.email} erfolgreich erstellt.")
     
@@ -28,6 +29,7 @@ def create_user_service(request: CreateRequest, db: Session):
     db.refresh(new_user)
     
     return new_user
+
 
 
 def login_user(email: str, password: str, db: Session):
@@ -44,3 +46,8 @@ def login_user(email: str, password: str, db: Session):
 
     logger.info(f"Benutzer {email} erfolgreich angemeldet.")
     return user_data
+
+# Function to check if the user has the required role
+def check_role(user: User, required_roles: list[str]):
+    if user.role not in required_roles:
+        raise HTTPException(status_code=403, detail="zugriff verfeigert")

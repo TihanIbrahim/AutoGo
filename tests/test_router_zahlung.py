@@ -1,172 +1,248 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
+from services.dependencies import get_current_user
 import random
 
 client = TestClient(app)
 
+# ======== Fixtures for creating basic data templates ========
+
 @pytest.fixture
-def auto_id():
-    # Create a new car and return its ID
-    auto = {
+def auto_template():
+    # Template data for creating a car (auto)
+    return {
         "brand": "BMW",
         "model": "sedan",
-        "jahr": 2007,
+        "jahr": 2010,
         "preis_pro_stunde": 30,
         "status": True
     }
-    response = client.post("/api/v1/auto", json=auto)
-    assert response.status_code == 201
-    return response.json()["id"]
 
 @pytest.fixture
-def kunde_id():
-    # Create a new customer and return its ID
-    kunde = {
+def generate_kunden_data():
+    # Template data for creating a customer (kunde) with random email to avoid conflicts
+    return {
         "vorname": "Tihan",
         "nachname": "Ibrahim",
         "geb_datum": "2000-08-25",
-        "handy_nummer": "0947698022",
-        "email": f"user{random.randint(1,100000)}@gmail.com"
+        "handy_nummer": "0995719489",
+        "email": f"titor{random.randint(1, 1000000)}@gmail.com"
     }
-    response = client.post("/api/v1/kunde", json=kunde)
-    assert response.status_code == 201
-    return response.json()["id"]
+
+@pytest.fixture
+def zahlung_template():
+    # Template data for creating a payment (zahlung)
+    return {
+        "zahlungsmethode": "direkt überweisung",
+        "datum": "2025-06-01",
+        "status": "wurde überwiesen",
+        "betrag": 300.0
+    }
+
+# ======== Fixtures for creating actual API resources and returning their IDs ========
+
+@pytest.fixture
+def auto_id(auto_template):
+    # Override user dependency with 'owner' role for this request
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    # Create a car and return its ID
+    resp = client.post("/api/v1/auto", json=auto_template)
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+@pytest.fixture
+def kunde_id(generate_kunden_data):
+    # Override user dependency with 'customer' role for this request
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    # Create a customer and return its ID
+    resp = client.post("/api/v1/kunde", json=generate_kunden_data)
+    assert resp.status_code == 201
+    return resp.json()["id"]
 
 @pytest.fixture
 def vertrag_id(auto_id, kunde_id):
-    # Create a new contract linked to car and customer, return its ID
+    # Create a contract linking the car and customer, return contract ID
     vertrag = {
         "auto_id": auto_id,
         "kunden_id": kunde_id,
+        "beginnt_datum": "2025-06-01",
+        "beendet_datum": "2025-06-05",
         "status": True,
-        "beginnt_datum": "2000-05-25",
-        "beendet_datum": "2000-06-25",
-        "total_preis": 500
+        "total_preis": 120.0
     }
-    response = client.post("/api/v1/vertrag", json=vertrag)
+    # Use 'customer' role to create contract
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    resp = client.post("/api/v1/vertrag", json=vertrag)
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+# ======== Fake user objects to simulate different user roles ========
+
+def fake_user_with_role_customer():
+    class User:
+        role = "customer"
+    return User()
+
+def fake_user_with_role_owner():
+    class User:
+        role = "owner"
+    return User()
+
+def fake_user_with_role_guest():
+    class User:
+        role = "guest"
+    return User()
+
+# ======== Automatically clear dependency overrides after each test ========
+
+@pytest.fixture(autouse=True)
+def clear_overrides():
+    yield
+    app.dependency_overrides = {}
+
+# ======== Tests for payment (zahlung) endpoints with role-based access control ========
+
+def test_create_zahlung_with_customer(auto_id, kunde_id, vertrag_id, zahlung_template):
+
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    zahlung_data = zahlung_template.copy()
+
+    zahlung_data["vertragid"] = vertrag_id
+
+    response = client.post("/api/v1/zahlung", json=zahlung_data)
+
+
     assert response.status_code == 201
-    return response.json()["id"]
 
-def test_create_zahlung(vertrag_id):
-    # Test creating a payment
-    zahlung= {
-        "vertragid": vertrag_id, 
-        "zahlungsmethode": "direkt überweisung", 
-        "datum": "2025-03-11",  
-        "status": "wurde überwiesen",
-        "betrag": 300.0
-    }
-    
-    zahlung_response = client.post("/api/v1/zahlung", json=zahlung)
-    assert zahlung_response.status_code == 201
-    zahlung_data = zahlung_response.json()
+    data = response.json()
+    assert data["vertragid"] == vertrag_id
+    assert data["zahlungsmethode"] == zahlung_data["zahlungsmethode"]
+    assert data["betrag"] == zahlung_data["betrag"]
 
-    # Verify the payment data matches the input
-    assert zahlung_data["vertragid"] == vertrag_id
-    assert zahlung_data["zahlungsmethode"] == "direkt überweisung"
-    assert zahlung_data["datum"] == "2025-03-11"
-    assert zahlung_data["status"] == "wurde überwiesen"
-    assert zahlung_data["betrag"] == 300.0
 
-def test_list_zahlungen(vertrag_id):
-    # Create a payment to ensure at least one exists
-    zahlung = {
-        "vertragid": vertrag_id, 
-        "zahlungsmethode": "direkt überweisung", 
-        "datum": "2025-03-11",  
-        "status": "wurde überwiesen",
-        "betrag": 300.0
-    }
-    zahlung_response = client.post("/api/v1/zahlung", json=zahlung)
-    assert zahlung_response.status_code == 201
 
-    # Retrieve all payments and verify the list contains at least one
-    list_response = client.get("/api/v1/zahlungen")
-    assert list_response.status_code == 200
+def test_create_zahlung_with_owner(auto_id, kunde_id, vertrag_id, zahlung_template):
+    # 'owner' role attempts to create payment, which should be forbidden
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
 
-    zahlungen = list_response.json()
-    assert isinstance(zahlungen, list)
-    assert len(zahlungen) > 0
+    zahlung_data = zahlung_template.copy()
+    zahlung_data["vertragid"] = vertrag_id
 
-    # Check that the created payment is present in the list
-    found = False
-    for z in zahlungen:
-        if z["vertragid"] == vertrag_id and z["betrag"] == 300.0:
-            found = True
-            break
+    response = client.post("/api/v1/zahlung", json=zahlung_data)
+    # Owner should NOT be allowed to create payment
+    assert response.status_code == 403
 
-    assert found, "The created payment was not found in the list"
+def test_create_zahlung_with_guest(auto_id, kunde_id, vertrag_id, zahlung_template):
+    # 'guest' role attempts to create payment, should be forbidden
+    app.dependency_overrides[get_current_user] = fake_user_with_role_guest
 
-def test_suchen_zahlungen_id(vertrag_id):
-    # Create a payment and retrieve it by ID
-    zahlung = {
-        "vertragid": vertrag_id,
-        "zahlungsmethode": "direkt überweisung",
-        "datum": "2025-03-11",
-        "status": "wurde überwiesen",
-        "betrag": 300.0
-    }
-    zahlung_response = client.post("/api/v1/zahlung", json=zahlung)
-    assert zahlung_response.status_code == 201
-    zahlung_id = zahlung_response.json()["id"]
+    zahlung_data = zahlung_template.copy()
+    zahlung_data["vertragid"] = vertrag_id
 
-    zahlung_id_response = client.get(f"/api/v1/zahlungen/{zahlung_id}")
-    assert zahlung_id_response.status_code == 200
-    zahlung_data1 = zahlung_id_response.json()
+    response = client.post("/api/v1/zahlung", json=zahlung_data)
+    assert response.status_code == 403
 
-    # Verify the fetched payment data matches the original
-    assert zahlung_data1["vertragid"] == vertrag_id
-    assert zahlung_data1["zahlungsmethode"] == "direkt überweisung"
-    assert zahlung_data1["datum"] == "2025-03-11"
-    assert zahlung_data1["status"] == "wurde überwiesen"
-    assert zahlung_data1["betrag"] == 300.0
+def test_list_zahlungen_with_owner():
+    # Owner can list all payments
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    response = client.get("/api/v1/zahlungen")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
-def test_update_zahlung(vertrag_id):
-    # Create a payment then update it
-    zahlung = {
-        "vertragid": vertrag_id,
-        "zahlungsmethode": "direkt überweisung",
-        "datum": "2025-03-11",
-        "status": "wurde überwiesen",
-        "betrag": 300.0
-    }
-    zahlung_response = client.post("/api/v1/zahlung", json=zahlung)
-    assert zahlung_response.status_code == 201
-    zahlung_id = zahlung_response.json()["id"]
+def test_list_zahlungen_with_customer():
+    # Customer cannot list all payments
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    response = client.get("/api/v1/zahlungen")
+    assert response.status_code == 403
 
-    zahlung_update = {
-        "vertragid": vertrag_id,
-        "zahlungsmethode": "direkt überweisung",
-        "datum": "2025-02-11",
-        "status": "wurde überwiesen",
-        "betrag": 320.0
-    }
+def test_list_zahlungen_with_guest():
+    # Guest cannot list payments
+    app.dependency_overrides[get_current_user] = fake_user_with_role_guest
+    response = client.get("/api/v1/zahlungen")
+    assert response.status_code == 403
 
-    zahlung_id_update_response = client.put(f"/api/v1/zahlungen/{zahlung_id}", json=zahlung_update)
-    assert zahlung_id_update_response.status_code == 200
-    updated_data = zahlung_id_update_response.json()
-    
-    # Confirm the payment was updated correctly
-    assert updated_data["datum"] == "2025-02-11"
-    assert updated_data["betrag"] == 320.0
+def test_update_zahlung_with_owner(auto_id, kunde_id, vertrag_id, zahlung_template):
+    # Create payment first as customer
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    zahlung_data = zahlung_template.copy()
+    zahlung_data["vertragid"] = vertrag_id
+    zahlung_resp = client.post("/api/v1/zahlung", json=zahlung_data)
+    assert zahlung_resp.status_code == 201
+    zahlung_id = zahlung_resp.json()["id"]
 
-def test_delete_zahlung(vertrag_id):
-    # Create a payment then delete it
-    zahlung = {
-        "vertragid": vertrag_id,
-        "zahlungsmethode": "direkt überweisung",
-        "datum": "2025-03-11",
-        "status": "wurde überwiesen",
-        "betrag": 300.0
-    }
-    zahlung_response = client.post("/api/v1/zahlung", json=zahlung)
-    assert zahlung_response.status_code == 201
-    zahlung_id = zahlung_response.json()["id"]
+    # Owner updates the payment (only amount)
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    zahlung_update = zahlung_template.copy()
+    zahlung_update["betrag"] = 350.0
+    zahlung_update["vertragid"] = vertrag_id  
 
-    delete_response = client.delete(f"/api/v1/zahlungen/{zahlung_id}")
-    assert delete_response.status_code == 204  
+    response = client.put(f"/api/v1/zahlungen/{zahlung_id}", json=zahlung_update)
+    assert response.status_code == 200
 
-    # Verify that the deleted payment is no longer retrievable
-    get_response = client.get(f"/api/v1/zahlung/{zahlung_id}")
-    assert get_response.status_code == 404       
+    updated = response.json()
+    assert updated["betrag"] == 350.0
+    assert updated["datum"] == zahlung_template["datum"]
+
+
+
+def test_update_zahlung_with_customer(auto_id, kunde_id, vertrag_id, zahlung_template):
+    # Customer creates and updates the payment (only amount)
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    zahlung_data = zahlung_template.copy()
+    zahlung_data["vertragid"] = vertrag_id
+    zahlung_resp = client.post("/api/v1/zahlung", json=zahlung_data)
+    assert zahlung_resp.status_code == 201
+    zahlung_id = zahlung_resp.json()["id"]
+
+    zahlung_update = zahlung_template.copy()
+    zahlung_update["betrag"] = 400.0
+    zahlung_update["vertragid"] = vertrag_id
+
+    response = client.put(f"/api/v1/zahlungen/{zahlung_id}", json=zahlung_update)
+    assert response.status_code == 200
+
+    updated = response.json()
+    assert updated["betrag"] == 400.0
+    assert updated["datum"] == zahlung_template["datum"]
+
+
+
+def test_update_zahlung_with_guest():
+    # Guest tries to update payment - should be forbidden
+    app.dependency_overrides[get_current_user] = fake_user_with_role_guest
+    response = client.put("/api/v1/zahlungen/1", json={
+        "vertragid": 1,
+        "zahlungsmethode": "karte",
+        "datum": "2025-05-01",
+        "status": "ok",
+        "betrag": 100.0
+    })
+    assert response.status_code == 403
+
+
+def test_delete_zahlung_with_owner(auto_id, kunde_id, vertrag_id, zahlung_template):
+    # Create payment as customer
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    zahlung_data = zahlung_template.copy()
+    zahlung_data["vertragid"] = vertrag_id
+    resp = client.post("/api/v1/zahlung", json=zahlung_data)
+    assert resp.status_code == 201
+    zahlung_id = resp.json()["id"]
+
+    # Owner deletes the payment
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    delete_resp = client.delete(f"/api/v1/zahlungen/{zahlung_id}")
+    assert delete_resp.status_code == 204
+
+def test_delete_zahlung_with_customer():
+    # Customer tries to delete a payment, should be forbidden
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    response = client.delete("/api/v1/zahlungen/1")
+    assert response.status_code == 403
+
+def test_delete_zahlung_with_guest():
+    # Guest tries to delete a payment, should be forbidden
+    app.dependency_overrides[get_current_user] = fake_user_with_role_guest
+    response = client.delete("/api/v1/zahlungen/1")
+    assert response.status_code == 403

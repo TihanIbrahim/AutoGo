@@ -1,44 +1,147 @@
+import pytest
+import random
 from fastapi.testclient import TestClient
-from datetime import date
 from main import app
+from services.dependencies import get_current_user
 
 client = TestClient(app)
 
-def test_creat_kunde():
-    # Prepare a new customer (kunde) payload with valid data
-    kunde = {
-        "vorname": "Tihan",
-        "nachname": "Ibrahim",
-        "geb_datum": str(date(2000, 8, 25)),  # Birthdate as string in ISO format
-        "handy_nummer": "0995719489",
-        "email": "titor9424@gmail.com"
+
+def get_kunden_template():
+    return {
+        "vorname": "Test",
+        "nachname": "User",
+        "geb_datum": "2000-01-01",
+        "handy_nummer": "0123456789",
+        "email": f"user{random.randint(1,100000)}@gmail.com"
     }
-  
-    # Send POST request to create a new kunde
-    response_create_kunde = client.post("/api/v1/kunde", json=kunde)
-    # Expect HTTP 201 Created status for successful creation
-    assert response_create_kunde.status_code == 201 
 
-    data = response_create_kunde.json()
+def fake_user_with_role_owner():
+    class User:
+        role = "owner"
+    return User()
 
-    # Verify the returned data matches the input values
-    assert data["vorname"] == "Tihan"
-    assert data["nachname"] == "Ibrahim"
-    assert data["geb_datum"] == "2000-08-25"
-    assert data["handy_nummer"] == "0995719489"
-    assert data["email"] == "titor9424@gmail.com"
+def fake_user_with_role_customer():
+    class User:
+        role = "customer"
+    return User()
 
-    # Ensure the response contains an "id" field assigned by the system
-    assert "id" in data
+def fake_user_without_role():
+    class User:
+        role = "guest"
+    return User()
 
-    kunde_id = data["id"]
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides():
+    yield
+    app.dependency_overrides = {}
 
-    # Send DELETE request to remove the created kunde by ID
-    response_delete_kunde = client.delete(f"/api/v1/kunden/{kunde_id}")
-    # Expect HTTP 204 No Content status after successful deletion
-    assert response_delete_kunde.status_code == 204  
+# ======= Tests for creating customers =======
 
-    # Attempt to GET the deleted kunde to confirm removal
-    response_get_kunde = client.get(f"/api/v1/kunden/{kunde_id}")
-    # Expect HTTP 404 Not Found since the kunde no longer exists
-    assert response_get_kunde.status_code == 404  
+def test_create_kunden_with_customer():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    data = get_kunden_template()
+    response = client.post("/api/v1/kunde", json=data)
+    assert response.status_code == 201
+    res_data = response.json()
+    assert res_data["vorname"] == "Test"
+    assert res_data["email"] == data["email"]
+
+def test_create_kunden_with_owner_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    data = get_kunden_template()
+    response = client.post("/api/v1/kunde", json=data)
+    assert response.status_code == 403
+
+def test_create_kunden_with_guest_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_without_role
+    data = get_kunden_template()
+    response = client.post("/api/v1/kunde", json=data)
+    assert response.status_code == 403
+
+# ======= Tests for fetching all customers =======
+
+def test_show_all_kunden_with_owner():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    response = client.get("/api/v1/kunden")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+def test_show_all_kunden_with_guest_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_without_role
+    response = client.get("/api/v1/kunden")
+    assert response.status_code == 403
+
+# ======= Tests for fetching customer by ID =======
+
+def test_show_kunde_by_id_with_owner():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    data = get_kunden_template()
+    create_resp = client.post("/api/v1/kunde", json=data)
+    kunde_id = create_resp.json()["id"]
+
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    response = client.get(f"/api/v1/kunden/{kunde_id}")
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["id"] == kunde_id
+    assert res_data["vorname"] == "Test"
+
+def test_show_kunde_by_id_with_guest_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_without_role
+    response = client.get("/api/v1/kunden/1")
+    assert response.status_code == 403
+
+# ======= Tests for updating a customer =======
+
+def test_update_kunde_with_owner():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    data = get_kunden_template()
+    create_resp = client.post("/api/v1/kunde", json=data)
+    kunde_id = create_resp.json()["id"]
+
+    update_data = {
+        "vorname": "Mohamed",
+        "handy_nummer": "987654321"
+    }
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    response = client.put(f"/api/v1/kunden/{kunde_id}", json=update_data)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["vorname"] == "Mohamed"
+    assert res_data["handy_nummer"] == "987654321"
+
+def test_update_kunde_with_customer_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    update_data = {"vorname": "Mohamed"}
+    response = client.put("/api/v1/kunden/1", json=update_data)
+    assert response.status_code == 403
+
+def test_update_kunde_with_guest_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_without_role
+    update_data = {"vorname": "Mohamed"}
+    response = client.put("/api/v1/kunden/1", json=update_data)
+    assert response.status_code == 403
+
+# ======= Tests for deleting a customer =======
+
+def test_delete_kunde_with_owner():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    data = get_kunden_template()
+    create_resp = client.post("/api/v1/kunde", json=data)
+    kunde_id = create_resp.json()["id"]
+
+    app.dependency_overrides[get_current_user] = fake_user_with_role_owner
+    response = client.delete(f"/api/v1/kunden/{kunde_id}")
+    assert response.status_code == 204
+
+def test_delete_kunde_with_customer_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_with_role_customer
+    response = client.delete("/api/v1/kunden/1")
+    assert response.status_code == 403
+
+def test_delete_kunde_with_guest_forbidden():
+    app.dependency_overrides[get_current_user] = fake_user_without_role
+    response = client.delete("/api/v1/kunden/1")
+    assert response.status_code == 403

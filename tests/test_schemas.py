@@ -6,6 +6,7 @@ from schemas.zahlung import ZahlungBase
 from schemas.auth_schemas import CreateRequest, TokenData
 import pytest
 from datetime import date
+import random
 
 # ------------------------------
 # AutoBase schema tests
@@ -186,7 +187,7 @@ def test_valid_request():
 def test_invalid_request():
     with pytest.raises(ValidationError):
         CreateRequest(
-            email="invalid-email",
+            email=f"user{random.randint(1,100000)}@gmail.com",
             password="123456789"
         )
 

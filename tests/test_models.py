@@ -97,6 +97,7 @@ def test_user(db):
     assert user.id is not None
     assert user.email == "tihanibrahim@hotmail.com"
     assert verify("123456789tito", user.hashed_password)
+    assert user.role == "customer"
 
 
 
