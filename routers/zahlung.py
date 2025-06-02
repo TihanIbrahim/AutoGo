@@ -7,16 +7,21 @@ from models.user import User
 from schemas.zahlung import ZahlungCreate, Zahlung, ZahlungUpdate
 from data_base import get_database_session
 from logger_config import setup_logger
-from services.dependencies import get_current_user
-from services.auth_service import check_role
+from services.dependencies import owner_required, owner_or_customer_required ,customer_required
+from datetime import datetime
+
 logger = setup_logger(__name__)
+
 router = APIRouter(prefix="/api/v1", tags=["Zahlungen"])
 
 
 @router.post("/zahlung", response_model=Zahlung, status_code=201)
-def create_zahlung(zahlung: ZahlungCreate, db: Session = Depends(get_database_session),current_user:User=Depends(get_current_user)):
-    
-    check_role(current_user,"customer")
+def create_zahlung(
+    zahlung: ZahlungCreate,
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(customer_required)
+
+):
     logger.info(f"Creating new payment for contract ID: {zahlung.vertragid}")
 
     # Validate that amount is not negative
@@ -51,8 +56,10 @@ def create_zahlung(zahlung: ZahlungCreate, db: Session = Depends(get_database_se
 
 
 @router.get("/zahlungen", response_model=List[Zahlung])
-def list_zahlungen(db: Session = Depends(get_database_session),current_user:User=Depends(get_current_user)):
-    check_role(current_user,"owner")
+def list_zahlungen(
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_required)  
+):
     logger.info("Fetching all payments")
     zahlungen = db.query(ZahlungModel).all()
     if not zahlungen:
@@ -62,8 +69,12 @@ def list_zahlungen(db: Session = Depends(get_database_session),current_user:User
 
 
 @router.put("/zahlungen/{zahlung_id}", response_model=Zahlung)
-def update_zahlung(zahlung_id: int, zahlung_update: ZahlungUpdate, db: Session = Depends(get_database_session),current_user:User=Depends(get_current_user)):
-    check_role(current_user, ["owner", "customer"])
+def update_zahlung(
+    zahlung_id: int,
+    zahlung_update: ZahlungUpdate,
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_or_customer_required) 
+):
     logger.info(f"Updating payment with ID {zahlung_id}")
     zahlung = db.query(ZahlungModel).filter(ZahlungModel.id == zahlung_id).first()
     if not zahlung:
@@ -100,8 +111,11 @@ def update_zahlung(zahlung_id: int, zahlung_update: ZahlungUpdate, db: Session =
 
 
 @router.delete("/zahlungen/{zahlung_id}", status_code=204)
-def delete_zahlung(zahlung_id: int, db: Session = Depends(get_database_session),current_user:User=Depends(get_current_user)):
-    check_role(current_user,"owner")
+def delete_zahlung(
+    zahlung_id: int,
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_required)  
+):
     logger.info(f"Attempting to delete payment with ID {zahlung_id}")
     zahlung = db.query(ZahlungModel).filter(ZahlungModel.id == zahlung_id).first()
     if not zahlung:
@@ -112,3 +126,4 @@ def delete_zahlung(zahlung_id: int, db: Session = Depends(get_database_session),
     db.delete(zahlung)
     db.commit()
     logger.info(f"Payment with ID {zahlung_id} deleted successfully")
+    return  # 204 No Content: no response body returned

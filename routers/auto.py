@@ -6,26 +6,27 @@ from schemas.auto import AutoCreate, Auto, AutoUpdate
 from data_base import get_database_session
 from logger_config import setup_logger
 from datetime import datetime
-from services.auth_service import check_role
-from services.dependencies import get_current_user
+from services.dependencies import owner_required, owner_or_customer_required
 from models.user import User
 
 logger = setup_logger(__name__)
-
 router = APIRouter(prefix="/api/v1")
 
+
 @router.post("/auto", response_model=Auto, status_code=201)
-def create_auto(auto: AutoCreate, db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
-    # Check if user has 'owner' role before creating auto
-    check_role(current_user, "owner")
+def create_auto(
+    auto: AutoCreate,
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_required)  # Only owners can create a car
+):
     logger.info(f"Creating auto: {auto.brand} {auto.model}")
 
-    # Validate price per hour must be positive
+    # Validate price per hour must be greater than zero
     if auto.preis_pro_stunde <= 0:
         logger.warning("Invalid price per hour (<= 0)")
         raise HTTPException(status_code=400, detail="Price per hour must be greater than 0.")
 
-    # Create new Auto record
+    # Create new auto record in the database
     db_auto = AutoModel(
         brand=auto.brand,
         model=auto.model,
@@ -41,17 +42,18 @@ def create_auto(auto: AutoCreate, db: Session = Depends(get_database_session), c
 
 
 @router.get("/autos", response_model=List[Auto])
-def show_all_auto(db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
-    # Check if user is 'owner' before listing autos
-    check_role(current_user, "owner")
+def show_all_auto(
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_required)  # Only owners can view available cars
+):
     logger.info("Request: Fetch all available autos")
 
-    # Query all autos with status = True (available)
     autos = db.query(AutoModel).filter(AutoModel.status.is_(True)).all()
 
+    # Return empty list if no available autos found (do not raise 404)
     if not autos:
-        logger.warning("No available autos found")
-        raise HTTPException(status_code=404, detail="No available autos found at the moment.")
+        logger.info("No available autos found, returning empty list")
+
     return autos
 
 
@@ -62,11 +64,8 @@ def search_auto(
     jahr: Optional[int] = Query(None, ge=2000, le=datetime.now().year),
     status: Optional[bool] = None,
     db: Session = Depends(get_database_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(owner_or_customer_required)  # Owners or customers can search
 ):
-    # Allow 'owner' to search autos
-    check_role(current_user, ["owner", "customer"])
-
     logger.info(f"Searching autos: brand={brand}, model={model}, jahr={jahr}, status={status}")
 
     query = db.query(AutoModel)
@@ -87,9 +86,11 @@ def search_auto(
 
 
 @router.get("/autos/{auto_id}", response_model=Auto)
-def show_auto(auto_id: int, db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
-    # Only 'owner' can get auto by ID
-    check_role(current_user, "owner")
+def show_auto(
+    auto_id: int,
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_required)  # Only owners can view auto details
+):
     logger.info(f"Fetching auto with ID: {auto_id}")
 
     auto_details = db.query(AutoModel).filter(AutoModel.id == auto_id).first()
@@ -100,10 +101,12 @@ def show_auto(auto_id: int, db: Session = Depends(get_database_session), current
 
 
 @router.put("/autos/{auto_id}", response_model=Auto)
-def update_auto(auto_id: int, auto_update: AutoUpdate, db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
- # Only 'owner' can update autos
-    check_role(current_user, "owner")
-
+def update_auto(
+    auto_id: int,
+    auto_update: AutoUpdate,
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_required)  # Only owners can update autos
+):
     logger.info(f"Updating auto with ID: {auto_id}")
 
     auto = db.query(AutoModel).filter(AutoModel.id == auto_id).first()
@@ -138,9 +141,9 @@ def update_auto(auto_id: int, auto_update: AutoUpdate, db: Session = Depends(get
 def calculate_total_price(
     auto_id: int = Path(..., gt=0, description="The ID of the auto (must be > 0)"),
     mietdauer_stunden: int = Query(..., gt=0, description="Rental duration in hours (must be > 0)"),
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_or_customer_required)  # Owners or customers can calculate price
 ):
-    # Calculate total price for rental based on hourly rate and duration
     logger.info(f"Calculating total price for auto ID {auto_id} with rental duration {mietdauer_stunden} hours")
 
     auto = db.query(AutoModel).filter(AutoModel.id == auto_id).first()
@@ -152,24 +155,22 @@ def calculate_total_price(
         logger.warning("Auto currently not available")
         raise HTTPException(status_code=400, detail="The auto is currently not available.")
 
-    if mietdauer_stunden <= 0:
-        logger.warning("Invalid rental duration")
-        raise HTTPException(status_code=400, detail="Rental duration must be greater than 0.")
-
-    gesamtpreis = auto.preis_pro_stunde * mietdauer_stunden
-    logger.info(f"Total price calculated: {gesamtpreis} EUR")
+    total_price = auto.preis_pro_stunde * mietdauer_stunden
+    logger.info(f"Total price calculated: {total_price} EUR")
     return {
         "auto_id": auto_id,
-        "mietdauer_stunden": mietdauer_stunden,
-        "preis_pro_stunde": auto.preis_pro_stunde,
-        "gesamtpreis": gesamtpreis
+        "rental_duration_hours": mietdauer_stunden,
+        "price_per_hour": auto.preis_pro_stunde,
+        "total_price": total_price
     }
 
 
 @router.delete("/autos/{auto_id}", status_code=204)
-def delete_auto(auto_id: int, db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
-    # Only 'owner' can delete autos
-    check_role(current_user, "owner")
+def delete_auto(
+    auto_id: int,
+    db: Session = Depends(get_database_session),
+    current_user: User = Depends(owner_required)  # Only owners can delete autos
+):
     logger.info(f"Attempting to delete auto with ID: {auto_id}")
 
     auto = db.query(AutoModel).filter(AutoModel.id == auto_id).first()

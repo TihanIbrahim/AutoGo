@@ -29,5 +29,3 @@ class ZahlungUpdate(BaseModel):
 # For returning payment with ID
 class Zahlung(ZahlungBase):
     id: int
-
-    model_config = ConfigDict(from_attributes=True)

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from data_base import get_database_session
 from security import jwt
 from models.user import User
+from services.auth_service import check_role
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -26,3 +27,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=401, detail="Benutzer wurde nicht gefunden") 
 
     return user
+
+
+def role_required(allowed_roles: list[str]):
+    def dependency(current_user: User = Depends(get_current_user)):
+        if current_user.role not in allowed_roles:
+            raise HTTPException(status_code=403, detail="Access denied: insufficient role")
+        return current_user
+    return dependency
+
+
+owner_required = role_required(["owner"])
+customer_required = role_required(["customer"])
+owner_or_customer_required = role_required(["owner", "customer"])

@@ -9,7 +9,7 @@ class AutoBase(BaseModel):
     preis_pro_stunde: int  # Hourly rental price
     status: bool  # Car availability status
 
-    model_config = ConfigDict(from_attributes=True) # Parse data from attributes
+    model_config = ConfigDict(from_attributes=True)  # Parse data from attributes
 
 # Model for creating a new Auto
 class AutoCreate(AutoBase):
@@ -18,8 +18,6 @@ class AutoCreate(AutoBase):
 # Model for Auto with ID
 class Auto(AutoBase):
     id: int  # Car ID
-
-    model_config = ConfigDict(from_attributes=True)
 
 # Model for updating an existing Auto
 class AutoUpdate(BaseModel):

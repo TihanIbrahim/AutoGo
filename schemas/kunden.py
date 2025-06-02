@@ -20,7 +20,6 @@ class KundenCreate(KundenBase):
 class Kunden(KundenBase):
     id: int  # Unique identifier for the customer
 
-    model_config = ConfigDict(from_attributes=True)
 
 # Model for updating an existing Kunden, all fields are optional
 class KundenUpdate(BaseModel):
@@ -31,5 +30,3 @@ class KundenUpdate(BaseModel):
     email: Optional[EmailStr] = None  # Optional email address
 
     model_config = ConfigDict(from_attributes=True)
-
-

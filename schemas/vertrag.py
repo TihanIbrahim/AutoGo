@@ -31,5 +31,4 @@ class VertragUpdate(BaseModel):
 # Model representing a contract including its ID
 class Vertrag(VertragBase):
     id: int  # Contract ID (Primary Key)
-
-    model_config = ConfigDict(from_attributes=True)  # Allow parsing from objects
+    # لا حاجة لإعادة تعريف model_config لأنه موروث من VertragBase

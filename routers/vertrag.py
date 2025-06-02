@@ -8,7 +8,7 @@ from models.user import User
 from schemas.vertrag import VertragCreate, Vertrag, VertragUpdate  
 from data_base import get_database_session
 from logger_config import setup_logger
-from services.dependencies import get_current_user
+from services.dependencies import owner_or_customer_required ,customer_required ,owner_required
 from services.auth_service import check_role
 
 logger = setup_logger(__name__)
@@ -17,8 +17,8 @@ router = APIRouter(prefix="/api/v1")
 
 # Create a new contract (Vertrag)
 @router.post("/vertrag", response_model=Vertrag, status_code=201)
-def create_vertrag(vertrag: VertragCreate, db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
-    check_role(current_user,"customer")
+def create_vertrag(vertrag: VertragCreate, db: Session = Depends(get_database_session), current_user: User = Depends(customer_required)):
+
     logger.info(f"Creating contract for Auto {vertrag.auto_id} and Customer {vertrag.kunden_id}.")
 
     # Validate dates: start must be before end
@@ -79,8 +79,7 @@ def create_vertrag(vertrag: VertragCreate, db: Session = Depends(get_database_se
 
 # Cancel a contract before it starts
 @router.post("/vertraege/{vertrag_id}/kuendigen")
-def vertrag_kuendigen(vertrag_id: int, db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
-    check_role(current_user, ["owner", "customer"])
+def vertrag_kuendigen(vertrag_id: int, db: Session = Depends(get_database_session), current_user: User = Depends(owner_or_customer_required)):
     vertrag = db.query(vertrag_model).filter(vertrag_model.id == vertrag_id).first()
 
     if not vertrag:
@@ -112,7 +111,7 @@ def vertrag_kuendigen(vertrag_id: int, db: Session = Depends(get_database_sessio
 
 # Update existing contract details
 @router.put("/vertraege/{vertrag_id}", response_model=Vertrag)
-def update_vertrag(vertrag_id: int, vertrag_update: VertragUpdate, db: Session = Depends(get_database_session), current_user: User = Depends(get_current_user)):
+def update_vertrag(vertrag_id: int, vertrag_update: VertragUpdate, db: Session = Depends(get_database_session), current_user: User = Depends(owner_required)):
     check_role(current_user, "owner")
     vertrag = db.query(vertrag_model).filter(vertrag_model.id == vertrag_id).first()
 
@@ -156,9 +155,9 @@ def update_vertrag(vertrag_id: int, vertrag_update: VertragUpdate, db: Session =
 @router.get("/vertraege", response_model=list[Vertrag])
 def get_all_vertraege(
     db: Session = Depends(get_database_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(owner_required)
 ):
-    check_role(current_user, "owner")
+
     logger.info(f"User with role 'owner' requested all contracts.")
 
     vertraege = db.query(vertrag_model).all()
@@ -178,4 +177,4 @@ def zwischenstatus_aktualisieren(db: Session):
                 db.commit()
                 db.refresh(auto)
                 db.refresh(vertrag)
-                logger.info(f"Car {auto.id} released after contract end, contract {vertrag.id} deactivated.") 
+                logger.info(f"Car {auto.id} released after contract end, contract {vertrag.id} deactivated.")  
