@@ -2,10 +2,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from data_base import Base
-from models.auto import Auto
+from models.auto import Auto , AutoStatus
 from models.kunden import Kunden
 from models.vertrag import Vertrag
-from models.zahlung import Zahlung
+from models.zahlung import Zahlung , ZahlungsmethodeEnum , ZahlungsStatusEnum
 from models.user import User
 from datetime import date
 from security.hash import hash_password, verify
@@ -38,7 +38,7 @@ def test_create_auto_vertrag_kunde(db):
         model="sedan",
         jahr=2007,
         preis_pro_stunde=30,
-        status=True  # True means available
+        status=AutoStatus.verfügbar # True means available
     )
     db.add(auto)
     db.commit()
@@ -60,7 +60,7 @@ def test_create_auto_vertrag_kunde(db):
     vertrag = Vertrag(
         auto_id=auto.id,
         kunden_id=kunden.id,
-        status=True,
+        status= "aktiv",
         beginnt_datum=date(2000, 5, 25),
         beendet_datum=date(2000, 6, 25),
         total_preis=500
@@ -71,12 +71,13 @@ def test_create_auto_vertrag_kunde(db):
 
     # Create and add a payment (Zahlung) linked to the contract
     zahlung = Zahlung(
-        vertragid=vertrag.id,
-        zahlungsmethode="direkt überweisung",
+        vertrag_id =vertrag.id,
+        zahlungsmethode=ZahlungsmethodeEnum.karte,
         datum=date(2025, 3, 11),
-        status="wurde überwiesen",
+        status=ZahlungsStatusEnum.bezahlt,
         betrag=300.0
     )
+    
     db.add(zahlung)
     db.commit()
     db.refresh(zahlung)
@@ -85,7 +86,7 @@ def test_create_auto_vertrag_kunde(db):
     assert vertrag.id is not None  # Contract ID should be assigned by DB
     assert vertrag.auto_id == auto.id  # Contract's car ID matches created car
     assert vertrag.kunden_id == kunden.id  # Contract's customer ID matches created customer
-    assert zahlung.vertragid == vertrag.id  # Payment linked to correct contract
+    assert zahlung.vertrag_id == vertrag.id  # Payment linked to correct contract
     assert auto.brand == "BMW"  # Car brand check
     assert vertrag.kunde.vorname == "Tihan"  # Customer's first name via relationship
 

@@ -1,10 +1,9 @@
-from fastapi import HTTPException, Depends, status
+from fastapi import HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from data_base import get_database_session
 from security import jwt
 from models.user import User
-from services.auth_service import check_role
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")

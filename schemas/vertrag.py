@@ -1,6 +1,13 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
+from enum import Enum
+
+class VertragStatus(str,Enum):
+    aktiv     =  "aktiv"
+    beendet   =  "beendet"
+    gekündigt =  "gekündigt"
+
 
 # Base model for rental contract with required fields
 class VertragBase(BaseModel):
@@ -8,7 +15,7 @@ class VertragBase(BaseModel):
     kunden_id: int           # Customer ID
     beginnt_datum: date      # Contract start date
     beendet_datum: date      # Contract end date
-    status: bool             # Contract status (active/inactive)
+    status: VertragStatus            
     total_preis: float       # Total price for the contract
 
     model_config = ConfigDict(from_attributes=True)  # Allow parsing from objects
@@ -23,7 +30,7 @@ class VertragUpdate(BaseModel):
     kunden_id: Optional[int] = None
     beginnt_datum: Optional[date] = None
     beendet_datum: Optional[date] = None
-    status: Optional[bool] = None
+    status: Optional[VertragStatus] = None
     total_preis: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)  # Allow parsing from objects
@@ -31,4 +38,4 @@ class VertragUpdate(BaseModel):
 # Model representing a contract including its ID
 class Vertrag(VertragBase):
     id: int  # Contract ID (Primary Key)
-    # لا حاجة لإعادة تعريف model_config لأنه موروث من VertragBase
+    

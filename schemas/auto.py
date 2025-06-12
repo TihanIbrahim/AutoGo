@@ -1,30 +1,40 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
+from enum import Enum
 
-# Base class for Auto models with common attributes
+# Enum for car status
+class AutoStatus(str, Enum):
+    verfügbar = "verfügbar"       # available
+    reserviert = "reserviert"     # reserved
+    vermietet = "vermietet"       # rented
+    in_wartung = "in_wartung"     # under maintenance
+    beschädigt = "beschädigt"     # damaged
+    außer_betrieb = "außer_betrieb"  # out of service
+
+# Base schema for Auto with common fields
 class AutoBase(BaseModel):
-    brand: str  # Car brand
-    model: str  # Car model
-    jahr: int  # Manufacture year
-    preis_pro_stunde: int  # Hourly rental price
-    status: bool  # Car availability status
+    brand: str
+    model: str
+    jahr: int
+    preis_pro_stunde: float
+    status: AutoStatus
 
-    model_config = ConfigDict(from_attributes=True)  # Parse data from attributes
+    model_config = ConfigDict(from_attributes=True)
 
-# Model for creating a new Auto
+# Schema for creating an Auto (inherits from AutoBase)
 class AutoCreate(AutoBase):
     pass
 
-# Model for Auto with ID
-class Auto(AutoBase):
-    id: int  # Car ID
-
-# Model for updating an existing Auto
+# Schema for updating an Auto (all fields optional)
 class AutoUpdate(BaseModel):
-    brand: Optional[str] = None  # Optional update for brand
-    model: Optional[str] = None  # Optional update for model
-    jahr: Optional[int] = None  # Optional update for year
-    preis_pro_stunde: Optional[int] = None  # Optional update for price
-    status: Optional[bool] = None  # Optional update for status
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    jahr: Optional[int] = None
+    preis_pro_stunde: Optional[float] = None
+    status: Optional[AutoStatus] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+# Schema including the ID (for read operations)
+class Auto(AutoBase):
+    id: int

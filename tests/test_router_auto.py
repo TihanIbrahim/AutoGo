@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from services.dependencies import get_current_user
 from tests.helpers import set_user_role  # Helper function to set user role for tests
 
 client = TestClient(app)
@@ -12,7 +11,7 @@ auto_template = {
     "model": "sedan",
     "jahr": 2010,
     "preis_pro_stunde": 30,
-    "status": True
+    "status": "verfügbar"
 }
 
 # Pytest fixture that automatically clears dependency overrides after each test
@@ -26,6 +25,7 @@ def clear_dependency_overrides():
 # Test creating a car as a user with 'owner' role (should succeed)
 def test_create_auto_with_owner():
     set_user_role("owner")  # Set current user role to 'owner'
+
     response = client.post("/api/v1/auto", json=auto_template)
     assert response.status_code == 201  # Check creation was successful (HTTP 201)
     data = response.json()
@@ -48,6 +48,7 @@ def test_create_auto_with_guest():
 def test_show_all_auto_with_owner():
     set_user_role("owner")
     response = client.get("/api/v1/autos")
+
     assert response.status_code == 200  # OK response
     autos = response.json()
     assert isinstance(autos, list)  # Should return a list of cars
@@ -91,7 +92,7 @@ def test_show_auto_by_id_with_owner():
         "model": "coupe",
         "jahr": 2010,
         "preis_pro_stunde": 40,
-        "status": True
+        "status": "verfügbar"
     }
     create_resp = client.post("/api/v1/auto", json=auto)
     auto_id = create_resp.json()["id"]
@@ -116,13 +117,13 @@ def test_update_auto_with_owner():
 
     update_data = {
         "preis_pro_stunde": 35,
-        "status": False
+        "status": "in_wartung"
     }
     update_resp = client.put(f"/api/v1/autos/{auto_id}", json=update_data)
     assert update_resp.status_code == 200
     updated = update_resp.json()
     assert updated["preis_pro_stunde"] == 35
-    assert updated["status"] is False
+    assert updated["status"] == "in_wartung"
 
 # Test updating a car as 'customer' (should be forbidden)
 def test_update_auto_with_customer_forbidden():
@@ -149,6 +150,7 @@ def test_delete_auto_with_owner():
     auto_id = create_resp.json()["id"]
 
     response = client.delete(f"/api/v1/autos/{auto_id}")
+    
     assert response.status_code == 204  # No content, deleted successfully
 
 # Test deleting a car as 'customer' (should be forbidden)
@@ -173,3 +175,46 @@ def test_calculate_price_with_owner():
     assert response.status_code == 200
     data = response.json()
     assert data["total_price"] == 30 * 5  # price per hour * hours rented
+
+# ======= Additional tests for calculate total price endpoint =======
+
+# Test calculating rental price for a car that is not available (status != verfügbar)
+def test_calculate_price_for_unavailable_auto():
+    set_user_role("owner")
+    # Create a car with status "in_wartung" (not available)
+    auto_unavailable = {
+        "brand": "Tesla",
+        "model": "model 3",
+        "jahr": 2020,
+        "preis_pro_stunde": 50,
+        "status": "in_wartung"
+    }
+    create_resp = client.post("/api/v1/auto", json=auto_unavailable)
+    auto_id = create_resp.json()["id"]
+
+    response = client.post(f"/api/v1/autos/{auto_id}/calculate-price?mietdauer_stunden=3")
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Das Auto ist momentan nicht verfügbar."
+
+# Test calculating rental price for a non-existing car (auto_id not found)
+def test_calculate_price_for_nonexistent_auto():
+    set_user_role("owner")
+    non_existent_auto_id = 99999
+    response = client.post(f"/api/v1/autos/{non_existent_auto_id}/calculate-price?mietdauer_stunden=2")
+    assert response.status_code == 404
+    assert "nicht verfügbar" in response.json()["detail"]
+
+# Test calculating rental price with invalid rental duration (<= 0)
+def test_calculate_price_with_invalid_rental_duration():
+    set_user_role("owner")
+    # Create a valid car first
+    create_resp = client.post("/api/v1/auto", json=auto_template)
+    auto_id = create_resp.json()["id"]
+
+    # Try with 0 hours (invalid)
+    response_zero = client.post(f"/api/v1/autos/{auto_id}/calculate-price?mietdauer_stunden=0")
+    assert response_zero.status_code == 422  # FastAPI will raise validation error
+
+    # Try with negative hours (invalid)
+    response_negative = client.post(f"/api/v1/autos/{auto_id}/calculate-price?mietdauer_stunden=-5")
+    assert response_negative.status_code == 422

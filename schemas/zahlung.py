@@ -1,31 +1,49 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
+from enum import Enum
 
-# Base model for payment
+
+class ZahlungsmethodeEnum(str, Enum):
+    karte = "karte"
+    überweisung = "überweisung"
+    paypal = "paypal"
+    stripe = "stripe"
+    klarna = "klarna"
+
+
+class ZahlungsStatusEnum(str, Enum):
+    bezahlt = "bezahlt"
+    offen = "offen"
+    abgebrochen = "abgebrochen"
+    teilweise = "teilweise"
+    zurückerstattet = "zurückerstattet"
+
+
 class ZahlungBase(BaseModel):
-    vertragid: int  # Contract ID
-    zahlungsmethode: str  # Payment method
-    datum: date  # Date of payment
-    status: str  # Payment status
-    betrag: float  # Amount
+    vertrag_id: int                 # Contract ID
+    zahlungsmethode: ZahlungsmethodeEnum  # Payment method
+    datum: date                    # Payment date
+    status: ZahlungsStatusEnum     # Payment status
+    betrag: float                  # Amount
 
     model_config = ConfigDict(from_attributes=True)
 
-# For creating a payment
-class ZahlungCreate(ZahlungBase):
-    pass
 
-# For updating a payment
+class ZahlungCreate(ZahlungBase):
+    pass  # For creating a payment
+
+
 class ZahlungUpdate(BaseModel):
-    vertragid: Optional[int] = None
-    zahlungsmethode: Optional[str] = None
+    vertrag_id: Optional[int] = None
+    zahlungsmethode: Optional[ZahlungsmethodeEnum] = None
     datum: Optional[date] = None
-    status: Optional[str] = None
+    status: Optional[ZahlungsStatusEnum] = None
     betrag: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
 
-# For returning payment with ID
+
 class Zahlung(ZahlungBase):
-    id: int
+    id: int  # Payment ID
+

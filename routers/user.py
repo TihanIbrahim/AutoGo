@@ -8,30 +8,32 @@ from logger_config import setup_logger
 logger = setup_logger(__name__)
 router = APIRouter()
 
+# Register a new user
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(request: CreateRequest, db: Session = Depends(get_database_Session)):
-    logger.info(f"Attempting registration for email: {request.email}")
+    logger.info(f"Registrierungsversuch für E-Mail: {request.email}")
     try:
         create_user_service(request, db)
-        logger.info(f"User successfully created: {request.email}")
-        return {"message": "User successfully registered"}
+        logger.info(f"Benutzer erfolgreich erstellt: {request.email}")
+        return {"message": "Benutzer erfolgreich registriert"}
     except ValueError:
-        logger.warning(f"Registration failed: Email already registered {request.email}")
-        raise HTTPException(status_code=400, detail="Email already registered")
+        logger.warning(f"Registrierung fehlgeschlagen: E-Mail bereits registriert {request.email}")
+        raise HTTPException(status_code=400, detail="E-Mail bereits registriert")
     except Exception:
-        logger.error(f"Internal server error during registration for {request.email}")
-        raise HTTPException(status_code=500, detail="Internal server error during registration")
+        logger.error(f"Interner Serverfehler während der Registrierung für {request.email}")
+        raise HTTPException(status_code=500, detail="Interner Serverfehler während der Registrierung")
 
+# User login
 @router.post("/login")
 def login(request: CreateRequest, db: Session = Depends(get_database_Session)):
-    logger.info(f"Login attempt for email: {request.email}")
+    logger.info(f"Login-Versuch für E-Mail: {request.email}")
     try:
         user = login_user(request.email, request.password, db)
         if not user:
-            logger.warning(f"Login failed: Invalid credentials for {request.email}")
-            raise HTTPException(status_code=401, detail="Invalid email or password")
-        logger.info(f"Login successful for {request.email}")
-        return {"message": "Login successful"}
+            logger.warning(f"Login fehlgeschlagen: Ungültige Anmeldedaten für {request.email}")
+            raise HTTPException(status_code=401, detail="Ungültige E-Mail oder Passwort")
+        logger.info(f"Login erfolgreich für {request.email}")
+        return {"message": "Login erfolgreich"}
     except Exception:
-        logger.error(f"Error during login for {request.email}")
-        raise HTTPException(status_code=500, detail="Error during login")
+        logger.error(f"Fehler während des Logins für {request.email}")
+        raise HTTPException(status_code=500, detail="Fehler während des Logins")

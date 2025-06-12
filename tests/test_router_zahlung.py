@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from services.dependencies import get_current_user
 import random
 from tests.helpers import set_user_role
 
@@ -17,7 +16,7 @@ def auto_template():
         "model": "sedan",
         "jahr": 2010,
         "preis_pro_stunde": 30,
-        "status": True
+        "status": "verfügbar"
     }
 
 @pytest.fixture
@@ -35,9 +34,9 @@ def generate_kunden_data():
 def zahlung_template():
     # Payment data template
     return {
-        "zahlungsmethode": "direkt überweisung",
+        "zahlungsmethode":"karte",
         "datum": "2025-06-01",
-        "status": "wurde überwiesen",
+        "status": "offen",
         "betrag": 300.0
     }
 
@@ -67,7 +66,7 @@ def vertrag_id(auto_id, kunde_id):
         "kunden_id": kunde_id,
         "beginnt_datum": "2025-06-01",
         "beendet_datum": "2025-06-05",
-        "status": True,
+        "status": "aktiv",
         "total_preis": 120.0
     }
     set_user_role("customer")
@@ -89,13 +88,13 @@ def test_create_zahlung_with_customer(auto_id, kunde_id, vertrag_id, zahlung_tem
     # Customers can create payments
     set_user_role("customer")
     zahlung_data = zahlung_template.copy()
-    zahlung_data["vertragid"] = vertrag_id
+    zahlung_data["vertrag_id"] = vertrag_id
 
     response = client.post("/api/v1/zahlung", json=zahlung_data)
     assert response.status_code == 201
 
     data = response.json()
-    assert data["vertragid"] == vertrag_id
+    assert data["vertrag_id"] == vertrag_id
     assert data["zahlungsmethode"] == zahlung_data["zahlungsmethode"]
     assert data["betrag"] == zahlung_data["betrag"]
 
@@ -103,7 +102,7 @@ def test_create_zahlung_with_owner(auto_id, kunde_id, vertrag_id, zahlung_templa
     # Owners should NOT be allowed to create payments
     set_user_role("owner")
     zahlung_data = zahlung_template.copy()
-    zahlung_data["vertragid"] = vertrag_id
+    zahlung_data["vertrag_id"] = vertrag_id
 
     response = client.post("/api/v1/zahlung", json=zahlung_data)
     assert response.status_code == 403  # Should be forbidden
@@ -112,7 +111,7 @@ def test_create_zahlung_with_guest(auto_id, kunde_id, vertrag_id, zahlung_templa
     # Guests should NOT be allowed to create payments
     set_user_role("guest")
     zahlung_data = zahlung_template.copy()
-    zahlung_data["vertragid"] = vertrag_id
+    zahlung_data["vertrag_id"] = vertrag_id
 
     response = client.post("/api/v1/zahlung", json=zahlung_data)
     assert response.status_code == 403
@@ -140,16 +139,16 @@ def test_update_zahlung_with_owner(auto_id, kunde_id, vertrag_id, zahlung_templa
     # Create a payment first
     set_user_role("customer")
     zahlung_data = zahlung_template.copy()
-    zahlung_data["vertragid"] = vertrag_id
+    zahlung_data["vertrag_id"] = vertrag_id
     response = client.post("/api/v1/zahlung", json=zahlung_data)
     assert response.status_code == 201
     zahlung_id = response.json()["id"]
 
-    # Update payment as owner
-    set_user_role("owner")
+    # Update payment as owner 
+    set_user_role("owner")   
     zahlung_update = zahlung_template.copy()
     zahlung_update["betrag"] = 350.0
-    zahlung_update["vertragid"] = vertrag_id
+    zahlung_update["vertrag_id"] = vertrag_id
 
     response = client.put(f"/api/v1/zahlungen/{zahlung_id}", json=zahlung_update)
     assert response.status_code == 200
@@ -161,14 +160,14 @@ def test_update_zahlung_with_customer(auto_id, kunde_id, vertrag_id, zahlung_tem
     # Create and update payment as customer
     set_user_role("customer")
     zahlung_data = zahlung_template.copy()
-    zahlung_data["vertragid"] = vertrag_id
+    zahlung_data["vertrag_id"] = vertrag_id
     response = client.post("/api/v1/zahlung", json=zahlung_data)
     assert response.status_code == 201
     zahlung_id = response.json()["id"]
 
     zahlung_update = zahlung_template.copy()
     zahlung_update["betrag"] = 400.0
-    zahlung_update["vertragid"] = vertrag_id
+    zahlung_update["vertrag_id"] = vertrag_id
 
     response = client.put(f"/api/v1/zahlungen/{zahlung_id}", json=zahlung_update)
     assert response.status_code == 200
@@ -180,11 +179,11 @@ def test_update_zahlung_with_guest():
     # Guests should NOT be able to update payments
     set_user_role("guest")
     response = client.put("/api/v1/zahlungen/1", json={
-        "vertragid": 1,
+        "vertrag_id": 1,
         "zahlungsmethode": "karte",
         "datum": "2025-05-01",
-        "status": "ok",
-        "betrag": 100.0
+        "status": "bezahlt",
+        "betrag": 100.0  
     })
     assert response.status_code == 403
 
@@ -192,7 +191,7 @@ def test_delete_zahlung_with_owner(auto_id, kunde_id, vertrag_id, zahlung_templa
     # Create a payment as customer
     set_user_role("customer")
     zahlung_data = zahlung_template.copy()
-    zahlung_data["vertragid"] = vertrag_id
+    zahlung_data["vertrag_id"] = vertrag_id
     response = client.post("/api/v1/zahlung", json=zahlung_data)
     assert response.status_code == 201
     zahlung_id = response.json()["id"]

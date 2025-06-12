@@ -19,7 +19,7 @@ def create_kunden(
     db_session: Session = Depends(get_database_session),
     current_user: User = Depends(customer_required)  # Only customer role allowed
 ):
-    logger.info(f"Creating customer: {kunden.vorname} {kunden.nachname}")
+    logger.info(f"Erstelle Kunde: {kunden.vorname} {kunden.nachname}")
     db_kunden = kundenmodel(
         vorname=kunden.vorname,
         nachname=kunden.nachname,
@@ -30,7 +30,7 @@ def create_kunden(
     db_session.add(db_kunden)
     db_session.commit()
     db_session.refresh(db_kunden)
-    logger.info(f"Customer created successfully with ID: {db_kunden.id}")
+    logger.info(f"Kunde erfolgreich erstellt mit ID: {db_kunden.id}")
     return db_kunden
 
 # List all customers (allowed for Owners only)
@@ -39,11 +39,8 @@ def show_all_kunden(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)  # Only owner role allowed
 ):
-    logger.info("Fetching all customers")
+    logger.info("Alle Kunden werden abgerufen")
     kunden = db.query(kundenmodel).all()
-    if not kunden:
-        logger.warning("No customers found")
-        raise HTTPException(status_code=404, detail="No customers available.")
     return kunden
 
 # Delete a customer by ID (allowed for Owners only)
@@ -53,16 +50,16 @@ def delete_kunde(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)  # Only owner role allowed
 ):
-    logger.info(f"Attempting to delete customer with ID: {kunden_id}")
+    logger.info(f"Versuche, Kunde mit ID {kunden_id} zu löschen")
     kunde = db.query(kundenmodel).filter(kundenmodel.id == kunden_id).first()
 
     if not kunde:
-        logger.warning(f"Customer with ID {kunden_id} not found")
-        raise HTTPException(status_code=404, detail=f"Customer with ID {kunden_id} not found.")
+        logger.warning(f"Kunde mit ID {kunden_id} nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Kunde mit ID {kunden_id} nicht gefunden.")
 
     db.delete(kunde)
     db.commit()
-    logger.info(f"Customer with ID {kunden_id} deleted successfully")
+    logger.info(f"Kunde mit ID {kunden_id} erfolgreich gelöscht")
     return None
 
 # Get customer details by ID (allowed for Owners only)
@@ -72,12 +69,12 @@ def get_kunde(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)  # Only owner role allowed
 ):
-    logger.info(f"Fetching customer with ID: {kunden_id}")
+    logger.info(f"Kunde mit ID {kunden_id} wird abgerufen")
     kunde = db.query(kundenmodel).filter(kundenmodel.id == kunden_id).first()
 
     if not kunde:
-        logger.warning(f"Customer with ID {kunden_id} not found")
-        raise HTTPException(status_code=404, detail=f"Customer with ID {kunden_id} not found.")
+        logger.warning(f"Kunde mit ID {kunden_id} nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Kunde mit ID {kunden_id} nicht gefunden.")
 
     return kunde
 
@@ -89,12 +86,12 @@ def update_kunde(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)  # Only owner role allowed
 ):
-    logger.info(f"Updating customer with ID: {kunden_id}")
+    logger.info(f"Aktualisiere Kunde mit ID: {kunden_id}")
     kunde = db.query(kundenmodel).filter(kundenmodel.id == kunden_id).first()
 
     if not kunde:
-        logger.warning(f"Customer with ID {kunden_id} not found")
-        raise HTTPException(status_code=404, detail=f"Customer with ID {kunden_id} not found.")
+        logger.warning(f"Kunde mit ID {kunden_id} nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Kunde mit ID {kunden_id} nicht gefunden.")
 
     if kunde_update.vorname is not None:
         kunde.vorname = kunde_update.vorname
@@ -109,5 +106,5 @@ def update_kunde(
 
     db.commit()
     db.refresh(kunde)
-    logger.info(f"Customer with ID {kunden_id} updated successfully")
+    logger.info(f"Kunde mit ID {kunden_id} erfolgreich aktualisiert")
     return kunde

@@ -1,19 +1,25 @@
-from sqlalchemy import Column, Integer, Date, Boolean, Float, ForeignKey
+from sqlalchemy import Column, Integer, Date, Boolean, Float, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from data_base import Base
+from enum import Enum as pyEnum
 
-# This model represents a rental contract (Vertrag) in the database
+
+class VertragStatus(pyEnum):
+    aktiv     =  "aktiv"      # Active
+    beendet   =  "beendet"    # Ended
+    gekündigt =  "gekündigt"  # Terminated
+
 class Vertrag(Base):
-    __tablename__ = "vertrag"  # Table name in the database
+    __tablename__ = "vertrag"
 
-    id = Column(Integer, primary_key=True, index=True)  # Unique ID for the contract
-    auto_id = Column(Integer, ForeignKey("auto.id"))  # Reference to the rented car
-    kunden_id = Column(Integer, ForeignKey("kunden.id"))  # Reference to the customer
-    status = Column(Boolean)  # Contract status (active or cancelled)
-    beginnt_datum = Column(Date)  # Start date of the contract
-    beendet_datum = Column(Date)  # End date of the contract
-    total_preis = Column(Float)  # Total price for the rental period
+    id = Column(Integer, primary_key=True, index=True)  # Contract ID
+    auto_id = Column(Integer, ForeignKey("auto.id"), nullable=False)  # Car ID
+    kunden_id = Column(Integer, ForeignKey("kunden.id"), nullable=False)  # Customer ID
+    status = Column(Enum(VertragStatus), index=True, nullable=False)  # Contract status
+    beginnt_datum = Column(Date, nullable=False)  # Start date
+    beendet_datum = Column(Date)  # End date
+    total_preis = Column(Float)  # Total price
 
-    auto = relationship("Auto", back_populates="vertraege")  # Link to the car model
-    kunde = relationship("Kunden", back_populates="vertraege")  # Link to the customer model
-    zahlungen = relationship("Zahlung", back_populates="vertrag")  # All payments for this contract
+    auto = relationship("Auto", back_populates="vertraege")  # Car relation
+    kunde = relationship("Kunden", back_populates="vertraege")  # Customer relation
+    zahlungen = relationship("Zahlung", back_populates="vertrag")  # Payments relation
