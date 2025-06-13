@@ -202,7 +202,8 @@ def test_calculate_price_for_nonexistent_auto():
     non_existent_auto_id = 99999
     response = client.post(f"/api/v1/autos/{non_existent_auto_id}/calculate-price?mietdauer_stunden=2")
     assert response.status_code == 404
-    assert "nicht verfügbar" in response.json()["detail"]
+    assert "nicht gefunden" in response.json()["detail"]
+
 
 # Test calculating rental price with invalid rental duration (<= 0)
 def test_calculate_price_with_invalid_rental_duration():

@@ -12,13 +12,23 @@ logger = setup_logger(__name__)
 
 router = APIRouter(prefix="/api/v1")
 
-# Create a new customer (allowed for Customers only)
+# =================== Kunde abrufen ===================
+def get_kunde(db: Session, kunden_id: int) -> kundenmodel:
+    # Retrieve customer from database by ID, raise 404 if not found
+    kunde = db.query(kundenmodel).filter(kundenmodel.id == kunden_id).first()
+    if not kunde:
+        logger.warning(f"Kunde mit ID {kunden_id} nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Kunde mit ID {kunden_id} nicht gefunden.")
+    return kunde
+
+# =================== Kunde erstellen ===================
 @router.post("/kunde", response_model=Kunden, status_code=201)
 def create_kunden(
     kunden: KundenCreate,
     db_session: Session = Depends(get_database_session),
-    current_user: User = Depends(customer_required)  # Only customer role allowed
+    current_user: User = Depends(customer_required)  # Only customers allowed
 ):
+    # Log and create a new customer in the database
     logger.info(f"Erstelle Kunde: {kunden.vorname} {kunden.nachname}")
     db_kunden = kundenmodel(
         vorname=kunden.vorname,
@@ -33,65 +43,56 @@ def create_kunden(
     logger.info(f"Kunde erfolgreich erstellt mit ID: {db_kunden.id}")
     return db_kunden
 
-# List all customers (allowed for Owners only)
+# =================== Alle Kunden anzeigen ===================
 @router.get("/kunden", response_model=List[Kunden])
 def show_all_kunden(
     db: Session = Depends(get_database_session),
-    current_user: User = Depends(owner_required)  # Only owner role allowed
+    current_user: User = Depends(owner_required)  # Only owners allowed
 ):
+    # Retrieve and return all customers from the database
     logger.info("Alle Kunden werden abgerufen")
     kunden = db.query(kundenmodel).all()
     return kunden
 
-# Delete a customer by ID (allowed for Owners only)
+# =================== Kunde löschen ===================
 @router.delete("/kunden/{kunden_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_kunde(
     kunden_id: int,
     db: Session = Depends(get_database_session),
-    current_user: User = Depends(owner_required)  # Only owner role allowed
+    current_user: User = Depends(owner_required)  # Only owners allowed
 ):
+    # Delete customer from database if exists, raise 404 if not found
     logger.info(f"Versuche, Kunde mit ID {kunden_id} zu löschen")
-    kunde = db.query(kundenmodel).filter(kundenmodel.id == kunden_id).first()
-
-    if not kunde:
-        logger.warning(f"Kunde mit ID {kunden_id} nicht gefunden")
-        raise HTTPException(status_code=404, detail=f"Kunde mit ID {kunden_id} nicht gefunden.")
+    kunde = get_kunde(db, kunden_id)
 
     db.delete(kunde)
     db.commit()
     logger.info(f"Kunde mit ID {kunden_id} erfolgreich gelöscht")
     return None
 
-# Get customer details by ID (allowed for Owners only)
+# =================== Kundendetails abrufen ===================
 @router.get("/kunden/{kunden_id}", response_model=Kunden)
-def get_kunde(
+def get_kunde_details(
     kunden_id: int,
     db: Session = Depends(get_database_session),
-    current_user: User = Depends(owner_required)  # Only owner role allowed
+    current_user: User = Depends(owner_required)  # Only owners allowed
 ):
+    # Retrieve and return customer details by ID
     logger.info(f"Kunde mit ID {kunden_id} wird abgerufen")
-    kunde = db.query(kundenmodel).filter(kundenmodel.id == kunden_id).first()
-
-    if not kunde:
-        logger.warning(f"Kunde mit ID {kunden_id} nicht gefunden")
-        raise HTTPException(status_code=404, detail=f"Kunde mit ID {kunden_id} nicht gefunden.")
-
+    kunde = get_kunde(db, kunden_id)
     return kunde
 
-# Update customer details by ID (allowed for Owners only)
+# =================== Kunde aktualisieren ===================
 @router.put("/kunden/{kunden_id}", response_model=Kunden)
 def update_kunde(
     kunden_id: int,
     kunde_update: KundenUpdate,
     db: Session = Depends(get_database_session),
-    current_user: User = Depends(owner_required)  # Only owner role allowed
+    current_user: User = Depends(owner_required)  # Only owners allowed
 ):
+    # Update customer information with provided data, raise 404 if not found
     logger.info(f"Aktualisiere Kunde mit ID: {kunden_id}")
-    kunde = db.query(kundenmodel).filter(kundenmodel.id == kunden_id).first()
-
-    if not kunde:
-        logger.warning(f"Kunde mit ID {kunden_id} nicht gefunden")
-        raise HTTPException(status_code=404, detail=f"Kunde mit ID {kunden_id} nicht gefunden.")
+    kunde = get_kunde(db, kunden_id)
 
     if kunde_update.vorname is not None:
         kunde.vorname = kunde_update.vorname

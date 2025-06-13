@@ -7,7 +7,7 @@ class KundenBase(BaseModel):
     vorname: str  # First name
     nachname: str  # Last name
     geb_datum: date  # Date of birth
-    handy_nummer: str  # Phone number
+    handy_nummer: Optional[str] = None # Phone number
     email: EmailStr  # Email address
 
     model_config = ConfigDict(from_attributes=True)  # Parse data from attributes

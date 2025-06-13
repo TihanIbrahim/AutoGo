@@ -14,29 +14,30 @@ logger = setup_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["Zahlungen"])
 
 
+# =================== Create a new payment (Neue Zahlung erstellen) ===================
 @router.post("/zahlung", response_model=Zahlung, status_code=201)
 def create_zahlung(
     zahlung: ZahlungCreate,
     db: Session = Depends(get_database_session),
     current_user: User = Depends(customer_required)
 ):
-    logger.info(f"Neue Zahlung wird erstellt für Vertrag ID: {zahlung.vertrag_id}")
+    logger.info(f"Creating new payment for contract ID: {zahlung.vertrag_id}")
 
     # Validate that amount is not negative
     if zahlung.betrag < 0:
-        logger.warning("Ungültiger Betrag: Betrag darf nicht negativ sein.")
-        raise HTTPException(status_code=400, detail="Der Betrag darf nicht negativ sein.")
+        logger.warning("Invalid amount: Amount cannot be negative.")
+        raise HTTPException(status_code=400, detail="Amount cannot be negative.")
 
     # Check if contract exists
     vertrag = db.query(VertragModel).filter(VertragModel.id == zahlung.vertrag_id).first()
-    if not vertrag:
-        logger.warning(f"Vertrag mit ID {zahlung.vertrag_id} wurde nicht gefunden.")
-        raise HTTPException(status_code=404, detail="Vertrag wurde nicht gefunden.")
+    if vertrag is None:
+        logger.warning(f"Contract with ID {zahlung.vertrag_id} not found.")
+        raise HTTPException(status_code=404, detail="Contract not found.")
 
     # Validate payment date is not before contract start date
     if zahlung.datum < vertrag.beginnt_datum:
-        logger.warning("Ungültiges Zahlungsdatum: Darf nicht vor Vertragsbeginn liegen.")
-        raise HTTPException(status_code=400, detail="Zahlungsdatum darf nicht vor Vertragsbeginn liegen.")
+        logger.warning("Invalid payment date: Cannot be before contract start date.")
+        raise HTTPException(status_code=400, detail="Payment date cannot be before contract start date.")
 
     # Create payment record
     db_zahlung = ZahlungModel(
@@ -49,21 +50,23 @@ def create_zahlung(
     db.add(db_zahlung)
     db.commit()
     db.refresh(db_zahlung)
-    logger.info(f"Zahlung erfolgreich erstellt mit ID: {db_zahlung.id}")
+    logger.info(f"Payment successfully created with ID: {db_zahlung.id}")
     return db_zahlung
 
 
+
+# =================== List all payments (Alle Zahlungen auflisten) ===================
 @router.get("/zahlungen", response_model=List[Zahlung])
 def list_zahlungen(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)
 ):
-    logger.info("Alle Zahlungen werden abgerufen.")
-    # Return empty list if no payments found
+    logger.info("Retrieving all payments.")
     zahlungen = db.query(ZahlungModel).all()
     return zahlungen
 
 
+# =================== Update payment details (Zahlungsdetails aktualisieren) ===================
 @router.put("/zahlungen/{zahlung_id}", response_model=Zahlung)
 def update_zahlung(
     zahlung_id: int,
@@ -71,28 +74,28 @@ def update_zahlung(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_or_customer_required)
 ):
-    logger.info(f"Zahlung mit ID {zahlung_id} wird aktualisiert.")
+    logger.info(f"Updating payment with ID {zahlung_id}.")
     zahlung = db.query(ZahlungModel).filter(ZahlungModel.id == zahlung_id).first()
-    if not zahlung:
-        logger.warning(f"Zahlung mit ID {zahlung_id} wurde nicht gefunden.")
-        raise HTTPException(status_code=404, detail=f"Zahlung mit ID {zahlung_id} wurde nicht gefunden.")
+    if zahlung is None:
+        logger.warning(f"Payment with ID {zahlung_id} not found.")
+        raise HTTPException(status_code=404, detail=f"Payment with ID {zahlung_id} not found.")
 
-    # Only validate if amount is provided
+    # Validate amount if provided
     if zahlung_update.betrag is not None and zahlung_update.betrag < 0:
-        logger.warning("Ungültiger Betrag bei Aktualisierung: Betrag darf nicht negativ sein.")
-        raise HTTPException(status_code=400, detail="Der Betrag darf nicht negativ sein.")
+        logger.warning("Invalid amount on update: Amount cannot be negative.")
+        raise HTTPException(status_code=400, detail="Amount cannot be negative.")
 
-    # Only check contract if vertrag_id is provided
+    # Validate contract if provided
     if zahlung_update.vertrag_id is not None:
         vertrag = db.query(VertragModel).filter(VertragModel.id == zahlung_update.vertrag_id).first()
-        if not vertrag:
-            logger.warning(f"Vertrag mit ID {zahlung_update.vertrag_id} wurde nicht gefunden.")
-            raise HTTPException(status_code=404, detail="Vertrag wurde nicht gefunden.")
+        if vertrag is None:
+            logger.warning(f"Contract with ID {zahlung_update.vertrag_id} not found.")
+            raise HTTPException(status_code=404, detail="Contract not found.")
         if zahlung_update.datum is not None and zahlung_update.datum < vertrag.beginnt_datum:
-            logger.warning("Ungültiges Zahlungsdatum bei Aktualisierung: Darf nicht vor Vertragsbeginn liegen.")
-            raise HTTPException(status_code=400, detail="Zahlungsdatum darf nicht vor Vertragsbeginn liegen.")
+            logger.warning("Invalid payment date on update: Cannot be before contract start date.")
+            raise HTTPException(status_code=400, detail="Payment date cannot be before contract start date.")
 
-    # Apply updates only if values are provided
+    # Apply updates
     if zahlung_update.vertrag_id is not None:
         zahlung.vertrag_id = zahlung_update.vertrag_id
     if zahlung_update.zahlungsmethode is not None:
@@ -106,24 +109,27 @@ def update_zahlung(
 
     db.commit()
     db.refresh(zahlung)
-    logger.info(f"Zahlung mit ID {zahlung_id} wurde erfolgreich aktualisiert.")
+    logger.info(f"Payment with ID {zahlung_id} successfully updated.")
     return zahlung
 
 
+
+# =================== Delete a payment (Zahlung löschen) ===================
 @router.delete("/zahlungen/{zahlung_id}", status_code=204)
 def delete_zahlung(
     zahlung_id: int,
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)
 ):
-    logger.info(f"Versuch, Zahlung mit ID {zahlung_id} zu löschen.")
+    logger.info(f"Attempting to delete payment with ID {zahlung_id}.")
     zahlung = db.query(ZahlungModel).filter(ZahlungModel.id == zahlung_id).first()
-    if not zahlung:
-        logger.warning(f"Zahlung mit ID {zahlung_id} wurde nicht gefunden.")
-        raise HTTPException(status_code=404, detail="Zahlung wurde nicht gefunden.")
+    if zahlung is None:
+        logger.warning(f"Payment with ID {zahlung_id} not found.")
+        raise HTTPException(status_code=404, detail="Payment not found.")
 
     # Delete payment record
     db.delete(zahlung)
     db.commit()
-    logger.info(f"Zahlung mit ID {zahlung_id} wurde erfolgreich gelöscht.")
+    logger.info(f"Payment with ID {zahlung_id} successfully deleted.")
     return
+
