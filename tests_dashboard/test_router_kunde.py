@@ -3,6 +3,7 @@ import random
 from fastapi.testclient import TestClient
 from main import app
 from tests_app.helpers import set_user_role  # Utility function to mock user roles
+import secrets
 
 client = TestClient(app)
 
@@ -10,12 +11,13 @@ client = TestClient(app)
 
 def get_kunden_template():
     """Returns a random valid customer data dictionary."""
+    random_num= secrets.randbelow(100000)+1
     return {
         "vorname": "Test",
         "nachname": "User",
         "geb_datum": "2000-01-01",
         "handy_nummer": "0123456789",
-        "email": f"user{random.randint(1,100000)}@gmail.com"
+        "email" :f"user{random_num}@gmail.com"
     }
 
 @pytest.fixture(autouse=True)

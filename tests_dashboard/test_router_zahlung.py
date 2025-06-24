@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from main import app
 import random
 from tests_app.helpers import set_user_role
+import secrets
 
 client = TestClient(app)
 
@@ -22,12 +23,13 @@ def auto_template():
 # Randomized customer data
 @pytest.fixture
 def generate_kunden_data():
+    random_num= secrets.randbelow(100000)+1
     return {
         "vorname": "Tihan",
         "nachname": "Ibrahim",
         "geb_datum": "2000-08-25",
         "handy_nummer": "0995719489",
-        "email": f"titor{random.randint(1, 1000000)}@gmail.com"
+        "email" :f"user{random_num}@gmail.com"
     }
 
 # Sample data for a payment
