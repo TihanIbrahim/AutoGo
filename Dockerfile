@@ -1,8 +1,7 @@
-FROM python:3.11.9
+FROM python:3.11.10
 
 RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --only-upgrade libfreetype6 libfreetype6-dev && \
+    apt-get install -y libfreetype6=2.12.1+dfsg-5+deb12u4 libfreetype6-dev=2.12.1+dfsg-5+deb12u4 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
