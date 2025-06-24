@@ -6,7 +6,7 @@ from enum import Enum
 class AutoStatus(str, Enum):
     verfügbar = "verfügbar"       # available
     reserviert = "reserviert"     # reserved
-    vermietet = "vermietet"       # rented
+    vermietet = "vermietet"       # renteda
     in_wartung = "in_wartung"     # under maintenance
     beschädigt = "beschädigt"     # damaged
     außer_betrieb = "außer_betrieb"  # out of service

@@ -37,5 +37,8 @@ def role_required(allowed_roles: list[str]):
 
 
 owner_required = role_required(["owner"])
-customer_required = role_required(["customer"])
-owner_or_customer_required = role_required(["owner", "customer"])
+customer_or_guest_required = role_required(["customer","guest"])
+owner_or_editor_required = role_required(["owner","editor"])
+owner_or_viewer_required = role_required(["owner","viewer"])
+
+

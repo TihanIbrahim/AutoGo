@@ -8,6 +8,7 @@ from logger_config import setup_logger
 # Initialize logger
 logger = setup_logger(__name__)
 
+
 def create_user_service(request: CreateRequest, db: Session):
     # Check if user with this email already exists
     existing_user = db.query(User).filter(User.email == request.email).first()
@@ -29,6 +30,8 @@ def create_user_service(request: CreateRequest, db: Session):
     db.refresh(new_user)
     return new_user
 
+
+
 def login_user(email: str, password: str, db: Session):
     # Get user by email
     user_data = db.query(User).filter(User.email == email).first()
@@ -44,6 +47,8 @@ def login_user(email: str, password: str, db: Session):
     logger.info(f"Benutzer {email} erfolgreich angemeldet.")
     return user_data
 
+
+
 def check_role(user: User, required_roles: list[str]):
     if user.role not in required_roles:
-        raise HTTPException(status_code=403, detail="zugriff verfeigert")
+        raise HTTPException(status_code=403, detail="Zugriff verweigert")
