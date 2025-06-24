@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 # Get the database URL from environment variable or use default if not set
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:123456789@localhost/DB1")
 
+
 # Create the database engine
 engine = create_engine(DATABASE_URL)
 

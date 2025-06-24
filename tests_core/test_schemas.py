@@ -7,7 +7,7 @@ from schemas.auth_schemas import CreateRequest, TokenData
 import pytest
 from datetime import date
 import random
-
+import secrets
 # ------------------------------
 # AutoBase schema tests
 # ------------------------------
@@ -181,10 +181,11 @@ def test_valid_request():
 
 # Combined test for invalid email/password format and missing password
 def test_invalid_or_missing_request():
-    # Invalid password (no uppercase or special char)
+    
+    random_num = secrets.randbelow(100000) + 1
     with pytest.raises(ValidationError):
         CreateRequest(
-            email=f"user{random.randint(1,100000)}@gmail.com",
+            email=f"user{random_num}@gmail.com",
             password="123456789"
         )
     # Missing password field

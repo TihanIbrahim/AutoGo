@@ -4,6 +4,7 @@ from datetime import date
 from fastapi.testclient import TestClient
 from main import app
 from tests_app.helpers import set_user_role
+import secrets
 
 
 client = TestClient(app)
@@ -20,12 +21,13 @@ def get_auto_template():
     }
 
 def get_kunden_template():
+    random_num = secrets.randbelow(100000) + 1
     return {
         "vorname": "Test",
         "nachname": "User",
         "geb_datum": "2000-01-01",
         "handy_nummer": "0123456789",
-        "email": f"user{random.randint(1, 100000)}@gmail.com"
+        "email": f"user{random_num}@gmail.com"
     }
 
 def get_vertrag_template(auto_id, kunden_id, beginnt, beendet, preis=100.0, status="aktiv"):
