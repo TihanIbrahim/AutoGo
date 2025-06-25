@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from tests_app.helpers import set_user_role  # Helper function to set the user role in test context
+from tests_app.helpers import set_user_role
 
 client = TestClient(app)
 
@@ -19,6 +19,22 @@ auto_template = {
 def clear_dependency_overrides():
     yield
     app.dependency_overrides = {}
+
+# Fixture to create a car and return its ID, created as 'owner' role
+@pytest.fixture
+def created_auto():
+    set_user_role("owner")
+    response = client.post("/api/v1/dashboard/autos", json=auto_template)
+    assert response.status_code == 201
+    return response.json()["id"]
+
+# Fixture to set user role before each test that requires it
+@pytest.fixture
+def set_role(request):
+    role = request.param
+    set_user_role(role)
+    yield
+    # any cleanup if needed
 
 # ======= Test creating a car with different user roles =======
 @pytest.mark.parametrize(("role", "expected_status"), [
@@ -54,31 +70,18 @@ def test_show_all_auto_forbidden_roles(role, expected_status):
     ("viewer", 403), # Viewers are forbidden to view car by ID
     ("editor", 403), # Editors are forbidden to view car by ID
 ])
-def test_show_auto_by_id(role, expected_status):
-    # First create a car as owner
-    set_user_role("owner")
-    auto = {
-        "brand": "Audi",
-        "model": "coupe",
-        "jahr": 2010,
-        "preis_pro_stunde": 40,
-        "status": "verfügbar"
-    }
-    create_resp = client.post("/api/v1/dashboard/autos", json=auto)
-    auto_id = create_resp.json()["id"]
-
-    # Then test fetching car by ID with different roles
+def test_show_auto_by_id(role, expected_status, created_auto):
     set_user_role(role)
-    response = client.get(f"/api/v1/dashboard/autos/{auto_id}")
+    response = client.get(f"/api/v1/dashboard/autos/{created_auto}")
 
     assert response.status_code == expected_status
 
     if expected_status == 200:
         data = response.json()
-        assert data["id"] == auto_id
-        assert data["brand"] == "Audi"
+        assert data["id"] == created_auto
+        assert data["brand"] == "BMW"
         assert data["jahr"] == 2010
-        assert data["model"] == "coupe"
+        assert data["model"] == "sedan"
 
 # ======= Test updating a car with different user roles =======
 @pytest.mark.parametrize("role, expected_status", [
@@ -86,28 +89,15 @@ def test_show_auto_by_id(role, expected_status):
     ("viewer", 403), # Viewers forbidden to update
     ("editor", 200), # Editors allowed to update
 ])
-def test_update_auto(role, expected_status):
-    # Create car as owner first
-    set_user_role("owner")
-    auto = {
-        "brand": "Audi",
-        "model": "coupe",
-        "jahr": 2010,
-        "preis_pro_stunde": 40,
-        "status": "verfügbar"
-    }
-    create_resp = client.post("/api/v1/dashboard/autos", json=auto)
-    auto_id = create_resp.json()["id"]
-
+def test_update_auto(role, expected_status, created_auto):
     # Data to update
     update_data = {
         "brand": "bmw",
         "model": "coupe"
     }
 
-    # Perform update with given role
     set_user_role(role)
-    response = client.put(f"/api/v1/dashboard/autos/{auto_id}", json=update_data)
+    response = client.put(f"/api/v1/dashboard/autos/{created_auto}", json=update_data)
 
     assert response.status_code == expected_status
 
@@ -122,14 +112,14 @@ def test_update_auto(role, expected_status):
     ("editor", 403), # Editors forbidden to delete
     ("viewer", 403), # Viewers forbidden to delete
 ])
-def test_delete_auto(role, expected_status):
-    # Create a car as owner first
-    set_user_role("owner")
-    create_resp = client.post("/api/v1/dashboard/autos", json=auto_template)
-    auto_id = create_resp.json()["id"]
-
-    # Attempt delete with specified role
+def test_delete_auto(role, expected_status, created_auto):
     set_user_role(role)
-    response = client.delete(f"/api/v1/dashboard/autos/{auto_id}")
-
+    response = client.delete(f"/api/v1/dashboard/autos/{created_auto}")
     assert response.status_code == expected_status
+
+    # If deletion successful, verify the car is really deleted
+    if expected_status == 204:
+        set_user_role("owner")  # Owner to check existence
+        get_resp = client.get(f"/api/v1/dashboard/autos/{created_auto}")
+        assert get_resp.status_code == 404
+

@@ -20,13 +20,13 @@ def get_auto_template():
     }
 
 def get_kunden_template():
-    random_num=secrets.randbelow(100000)+1
+    random_num = secrets.randbelow(100000) + 1
     return {
         "vorname": "Test",
         "nachname": "User",
         "geb_datum": "2000-01-01",
         "handy_nummer": "0123456789",
-        "email" :f"user{random_num}@gmail.com"
+        "email": f"user{random_num}@gmail.com"
     }
 
 def get_vertrag_template(auto_id, kunden_id, beginnt, beendet, preis=100.0, status="aktiv"):
@@ -38,6 +38,13 @@ def get_vertrag_template(auto_id, kunden_id, beginnt, beendet, preis=100.0, stat
         "total_preis": preis,
         "status": status
     }
+
+# New helper function to create Vertrag to avoid repetition
+def create_vertrag_helper(auto_id, kunden_id, beginnt, beendet, preis=300.0):
+    vertrag = get_vertrag_template(auto_id, kunden_id, beginnt, beendet, preis)
+    resp = client.post("/api/v1/dashboard/vertraege", json=vertrag)
+    assert resp.status_code == 201
+    return resp.json()
 
 @pytest.fixture(autouse=True)
 def clear_dependency_overrides():
@@ -61,16 +68,13 @@ def created_kunde():
 @pytest.fixture
 def created_vertrag(created_auto, created_kunde):
     set_user_role("owner")
-    vertrag = get_vertrag_template(
-        created_auto["id"], 
-        created_kunde["id"], 
-        date(2025, 8, 1), 
-        date(2025, 8, 31), 
+    return create_vertrag_helper(
+        created_auto["id"],
+        created_kunde["id"],
+        date(2025, 8, 1),
+        date(2025, 8, 31),
         preis=200.0
     )
-    response = client.post("/api/v1/dashboard/vertraege", json=vertrag)
-    assert response.status_code == 201
-    return response.json()
 
 # ---------- Tests ----------
 
@@ -83,10 +87,10 @@ def created_vertrag(created_auto, created_kunde):
 def test_create_vertrag_permissions(role, expected_status, created_auto, created_kunde):
     set_user_role(role)
     vertrag = get_vertrag_template(
-        created_auto["id"], 
-        created_kunde["id"], 
-        date(2025, 9, 1), 
-        date(2025, 9, 30), 
+        created_auto["id"],
+        created_kunde["id"],
+        date(2025, 9, 1),
+        date(2025, 9, 30),
         preis=150.0
     )
     response = client.post("/api/v1/dashboard/vertraege", json=vertrag)
@@ -130,20 +134,15 @@ def test_get_all_vertraege_permissions(role, expected_status):
     ("editor", 403),  # Editor is forbidden to cancel contract
 ])
 def test_vertrag_kundigen_before_start(role, expected_status, created_auto, created_kunde):
-    set_user_role("owner")  
-
-    vertrag = get_vertrag_template(
+    set_user_role("owner")
+    vertrag_created = create_vertrag_helper(
         created_auto["id"],
         created_kunde["id"],
         date(2025, 12, 1),
         date(2025, 12, 31),
         preis=300.0
     )
-
-    resp_create = client.post("/api/v1/dashboard/vertraege", json=vertrag)
-    assert resp_create.status_code == 201
-
-    vertrag_id = resp_create.json()["id"]
+    vertrag_id = vertrag_created["id"]
 
     set_user_role(role)
     resp_cancel = client.post(f"/api/v1/dashboard/vertraege/{vertrag_id}/kuendigen")
@@ -160,16 +159,14 @@ def test_vertrag_kundigen_before_start(role, expected_status, created_auto, crea
 ])
 def test_vertrag_kundigen_after_start(role, expected_status, created_auto, created_kunde):
     set_user_role("owner")
-    vertrag = get_vertrag_template(
+    vertrag_created = create_vertrag_helper(
         created_auto["id"],
         created_kunde["id"],
         date(2025, 1, 1),
         date(2025, 1, 31),
         preis=300.0
     )
-    resp_create = client.post("/api/v1/dashboard/vertraege", json=vertrag)
-    assert resp_create.status_code == 201
-    vertrag_id = resp_create.json()["id"]
+    vertrag_id = vertrag_created["id"]
 
     set_user_role(role)
     resp_cancel = client.post(f"/api/v1/dashboard/vertraege/{vertrag_id}/kuendigen")

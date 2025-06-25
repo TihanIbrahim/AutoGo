@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Path
 from sqlalchemy.orm import Session
 from typing import List
-
 from data_base import get_database_session
 from models.kunden import Kunden as KundenModel
 from schemas.kunden import KundenCreate, Kunden, KundenUpdate
