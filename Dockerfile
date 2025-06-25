@@ -2,8 +2,9 @@ FROM python:3.13.5
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y libfreetype6=2.12.1+dfsg-5+deb12u4 libfreetype6-dev=2.12.1+dfsg-5+deb12u4 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends libfreetype6=2.12.1+dfsg-5+deb12u4 libfreetype6-dev=2.12.1+dfsg-5+deb12u4 && \
+    rm -rf /var/lib/apt/lists/*
+
 
 
 WORKDIR /app
