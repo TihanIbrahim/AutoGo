@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 # Test password hashing and verification
 def test_hashpassword_verify():
-    password = "tito123456789"
+    password = "Test-password-1@"
     hashed_password = hash_password(password)
     
     # The hashed password should not be the same as the raw password

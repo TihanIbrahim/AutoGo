@@ -174,10 +174,10 @@ def test_invalid_or_missing_zahlung():
 def test_valid_request():
     request = CreateRequest(
         email="loloakiL@gmail.com",
-        password="Abc123456!"
+        password="Test-password-1@"
     )
     assert request.email == "loloakiL@gmail.com"
-    assert request.password == "Abc123456!"
+    assert request.password == "Test-password-1@"
 
 # Combined test for invalid email/password format and missing password
 def test_invalid_or_missing_request():
@@ -196,8 +196,8 @@ def test_invalid_or_missing_request():
 
 # Test valid password meeting all rules
 def test_valid_password():
-    request = CreateRequest(email="test@example.com", password="Abcd1234!")
-    assert request.password == "Abcd1234!"
+    request = CreateRequest(email="test@example.com", password="Test-password-1@")
+    assert request.password == "Test-password-1@"
 
 # Test password too short
 def test_password_too_short():
