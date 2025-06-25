@@ -21,28 +21,28 @@ def create_vertrag(
     db: Session = Depends(get_database_session), 
     current_user: User = Depends(owner_required)
 ):
-    logger.info(f"User {current_user.id} creating contract for Auto {vertrag.auto_id} and Customer {vertrag.kunden_id}")
+    logger.info(f"User {current_user.id} erstellt Vertrag für Auto {vertrag.auto_id} und Kunde {vertrag.kunden_id}")
 
     if vertrag.beginnt_datum >= vertrag.beendet_datum:
-        logger.warning("Start date must be before end date")
-        raise HTTPException(status_code=400, detail="Start date must be before end date.")
+        logger.warning("Startdatum muss vor Enddatum liegen")
+        raise HTTPException(status_code=400, detail="Startdatum muss vor Enddatum liegen.")
 
     if (vertrag.beendet_datum - vertrag.beginnt_datum).days < 1:
-        logger.warning("Contract duration must be at least one day")
-        raise HTTPException(status_code=400, detail="Contract duration must be at least one day.")
+        logger.warning("Vertragsdauer muss mindestens einen Tag sein")
+        raise HTTPException(status_code=400, detail="Vertragsdauer muss mindestens einen Tag sein.")
 
     auto = db.query(Auto).filter(Auto.id == vertrag.auto_id).first()
     if not auto:
-        logger.warning("Car not found")
-        raise HTTPException(status_code=404, detail="Car not found.")
+        logger.warning("Auto nicht gefunden")
+        raise HTTPException(status_code=404, detail="Auto nicht gefunden.")
     if auto.status in ["beschädigt", "reserviert", "vermietet", "in_wartung", "außer_betrieb"]:
-        logger.warning(f"Car currently not available (status: {auto.status})")
-        raise HTTPException(status_code=400, detail="Car currently not available.")
+        logger.warning(f"Auto derzeit nicht verfügbar (Status: {auto.status})")
+        raise HTTPException(status_code=400, detail="Auto derzeit nicht verfügbar.")
 
     kunde = db.query(Kunden).filter(Kunden.id == vertrag.kunden_id).first()
     if not kunde:
-        logger.warning("Customer not found")
-        raise HTTPException(status_code=404, detail="Customer not found.")
+        logger.warning("Kunde nicht gefunden")
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden.")
 
     auto.status = "reserviert"
 
@@ -64,7 +64,7 @@ def create_vertrag(
         auto.status = "verfügbar"
         db.commit()
         db.refresh(auto)
-        logger.info(f"Car {auto.id} freed immediately after contract end")
+        logger.info(f"Auto {auto.id} sofort nach Vertragsende freigegeben")
 
     return db_vertrag
 
@@ -74,7 +74,7 @@ def get_all_vertraege(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_or_viewer_required)
 ):
-    logger.info("Dashboard: Retrieving all contracts")
+    logger.info("Alle Verträge werden abgerufen")
     vertraege = db.query(vertrag_model).all()
     return vertraege
 
@@ -86,24 +86,25 @@ def update_vertrag(
     db: Session = Depends(get_database_session), 
     current_user: User = Depends(owner_or_editor_required)
 ):
-    logger.info(f"User {current_user.id} updating contract {vertrag_id}")
+    logger.info(f"Vertrag {vertrag_id} wird aktualisiert")
 
     vertrag = db.query(vertrag_model).filter(vertrag_model.id == vertrag_id).first()
     if not vertrag:
-        raise HTTPException(status_code=404, detail=f"Contract with ID {vertrag_id} not found.")
+        logger.warning(f"Vertrag mit ID {vertrag_id} nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Vertrag mit ID {vertrag_id} nicht gefunden.")
 
     if vertrag_update.auto_id is not None:
         auto = db.query(Auto).filter(Auto.id == vertrag_update.auto_id).first()
         if not auto:
-            logger.warning("New car not found")
-            raise HTTPException(status_code=404, detail="New car not found.")
+            logger.warning("Neues Auto nicht gefunden")
+            raise HTTPException(status_code=404, detail="Neues Auto nicht gefunden.")
         vertrag.auto_id = vertrag_update.auto_id
 
     if vertrag_update.kunden_id is not None:
         kunde = db.query(Kunden).filter(Kunden.id == vertrag_update.kunden_id).first()
         if not kunde:
-            logger.warning("New customer not found")
-            raise HTTPException(status_code=404, detail="New customer not found.")
+            logger.warning("Neuer Kunde nicht gefunden")
+            raise HTTPException(status_code=404, detail="Neuer Kunde nicht gefunden.")
         vertrag.kunden_id = vertrag_update.kunden_id
 
     if vertrag_update.beginnt_datum is not None:
@@ -117,7 +118,7 @@ def update_vertrag(
 
     db.commit()
     db.refresh(vertrag)
-    logger.info(f"Contract {vertrag_id} updated successfully")
+    logger.info(f"Vertrag {vertrag_id} erfolgreich aktualisiert")
     return vertrag
 
 # Cancel contract before it starts
@@ -127,9 +128,12 @@ def vertrag_kuendigen(
     db: Session = Depends(get_database_session), 
     current_user: User = Depends(owner_required)
 ):
+    logger.info(f"Versuche Vertrag {vertrag_id} zu kündigen")
+
     vertrag = db.query(vertrag_model).filter(vertrag_model.id == vertrag_id).first()
     if not vertrag:
-        raise HTTPException(status_code=404, detail=f"Contract with ID {vertrag_id} not found.")
+        logger.warning(f"Vertrag mit ID {vertrag_id} nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Vertrag mit ID {vertrag_id} nicht gefunden.")
 
     if datetime.now().date() >= vertrag.beginnt_datum:
         logger.warning("Kündigung nach Vertragsbeginn nicht erlaubt")
@@ -144,5 +148,5 @@ def vertrag_kuendigen(
     if auto:
         db.refresh(auto)
 
-    logger.info(f"Vertrag {vertrag_id} erfolgreich gekündigt.")
+    logger.info(f"Vertrag {vertrag_id} erfolgreich gekündigt")
     return {"message": "Vertrag wurde erfolgreich gekündigt."}
