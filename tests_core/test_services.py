@@ -52,14 +52,14 @@ def test_login_user(db):
     # Prepare user in DB
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
-        password="Test-password-1@"
+        password="Test-password-2@"
     )
     user1 = create_user_service(request1, db)
 
     # Test login with correct credentials
     logged_in_user = login_user(
         email="lolo1234@gmail.com",
-        password="Test-password-1@",
+        password="Test-password-2@",
         db=db
     )
 
@@ -72,7 +72,7 @@ def test_login_user_wrong_password(db):
     # Prepare user in DB
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
-        password="Test-password-1@"
+        password="Test-password-3@"
     )
     create_user_service(request1, db)
 
