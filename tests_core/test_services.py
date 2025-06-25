@@ -27,7 +27,7 @@ def test_create_user(db):
     # Test creating a new user with valid data
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
-        password="Abc123456!"
+        password="Test-password-1@"
     )
 
     user1 = create_user_service(request1, db)
@@ -40,7 +40,7 @@ def test_create_user(db):
     # Test creating a user with the same email should raise conflict error
     request2 = CreateRequest(
         email="lolo1234@gmail.com",
-        password="Abc125476!"
+        password="Test-password-1@"
     )
 
     with pytest.raises(HTTPException) as error:
@@ -52,14 +52,14 @@ def test_login_user(db):
     # Prepare user in DB
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
-        password="Abc123456!"
+        password="Test-password-1@"
     )
     user1 = create_user_service(request1, db)
 
     # Test login with correct credentials
     logged_in_user = login_user(
         email="lolo1234@gmail.com",
-        password="Abc123456!",
+        password="Test-password-1@",
         db=db
     )
 
@@ -72,7 +72,7 @@ def test_login_user_wrong_password(db):
     # Prepare user in DB
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
-        password="Abc123456!"
+        password="Test-password-1@"
     )
     create_user_service(request1, db)
 
@@ -80,7 +80,7 @@ def test_login_user_wrong_password(db):
     with pytest.raises(HTTPException) as error:
         login_user(
             email="lolo1234@gmail.com",
-            password="wrongpassword",
+            password="Wrong-password@",
             db=db
         )
     assert error.value.status_code == 401  # Unauthorized
@@ -91,7 +91,7 @@ def test_login_user_nonexistent_email(db):
     with pytest.raises(HTTPException) as error:
         login_user(
             email="nonexistent@gmail.com",
-            password="somepassword",
+            password="Some-password@",
             db=db
         )
     assert error.value.status_code == 401  # Unauthorized
