@@ -8,9 +8,10 @@ import secrets
 
 client = TestClient(app)
 
-# ---------- Helpers ----------
+# ---------- Hilfsfunktionen ----------
 
 def get_auto_template():
+    # Liefert eine Beispiel-Payload für ein Auto zurück
     return {
         "brand": "TOYOTA",
         "model": "COROLA",
@@ -20,6 +21,8 @@ def get_auto_template():
     }
 
 def get_kunden_template():
+    # Liefert eine Beispiel-Payload für einen Kunden zurück
+    # E-Mail wird mit Zufallszahl versehen, um Konflikte zu vermeiden
     random_num = secrets.randbelow(100000) + 1
     return {
         "vorname": "Test",
@@ -30,6 +33,7 @@ def get_kunden_template():
     }
 
 def get_vertrag_template(auto_id, kunden_id, beginnt, beendet, preis=100.0, status="aktiv"):
+    # Liefert eine Beispiel-Payload für einen Vertrag zurück
     return {
         "auto_id": auto_id,
         "kunden_id": kunden_id,
@@ -39,13 +43,17 @@ def get_vertrag_template(auto_id, kunden_id, beginnt, beendet, preis=100.0, stat
         "status": status
     }
 
+# ---------- Fixtures ----------
+
 @pytest.fixture(autouse=True)
 def clear_dependency_overrides():
+    # Nach jedem Test werden FastAPI-Dependency-Overrides zurückgesetzt
     yield
     app.dependency_overrides = {}
 
 @pytest.fixture
 def created_auto():
+    # Erstellt ein Auto mit der Rolle 'owner' und liefert die Antwort zurück
     set_user_role("owner")
     response = client.post("/api/v1/dashboard/autos", json=get_auto_template())
     assert response.status_code == 201
@@ -53,6 +61,7 @@ def created_auto():
 
 @pytest.fixture
 def created_kunde():
+    # Erstellt einen Kunden mit der Rolle 'customer' und liefert die Antwort zurück
     set_user_role("customer")
     response = client.post("/api/v1/kunden", json=get_kunden_template())
     assert response.status_code == 201
@@ -60,6 +69,7 @@ def created_kunde():
 
 @pytest.fixture
 def created_vertrag(created_auto, created_kunde):
+    # Erstellt einen Vertrag zwischen einem Auto und Kunden (beide existieren)
     set_user_role("customer")
     vertrag = get_vertrag_template(
         created_auto["id"],
@@ -79,6 +89,7 @@ def created_vertrag(created_auto, created_kunde):
     ("guest", 201),
 ])
 def test_create_vertrag_permissions(role, expected_status, created_auto, created_kunde):
+    # Testet, dass verschiedene Rollen Verträge anlegen dürfen
     set_user_role(role)
     vertrag = get_vertrag_template(
         created_auto["id"],
@@ -95,6 +106,7 @@ def test_create_vertrag_permissions(role, expected_status, created_auto, created
     ("guest", 200),
 ])
 def test_vertrag_kundigen_before_start(role, expected_status, created_auto, created_kunde):
+    # Testet das erfolgreiche Kündigen eines Vertrags VOR Vertragsbeginn
     set_user_role(role)
     vertrag = get_vertrag_template(
         created_auto["id"],
@@ -116,6 +128,7 @@ def test_vertrag_kundigen_before_start(role, expected_status, created_auto, crea
     ("guest", 400),
 ])
 def test_vertrag_kundigen_after_start(role, expected_status, created_auto, created_kunde):
+    # Testet, dass Kündigung nach Vertragsbeginn nicht erlaubt ist
     set_user_role(role)
     vertrag = get_vertrag_template(
         created_auto["id"],
@@ -133,6 +146,7 @@ def test_vertrag_kundigen_after_start(role, expected_status, created_auto, creat
     assert resp_cancel.json().get("detail") == "Kündigung nach Vertragsbeginn ist nicht erlaubt."
 
 def test_create_vertrag_invalid_dates(created_auto, created_kunde):
+    # Testet, dass das Erstellen eines Vertrags mit Enddatum vor Startdatum fehlschlägt
     set_user_role("customer")
     vertrag = get_vertrag_template(
         created_auto["id"],
@@ -146,6 +160,7 @@ def test_create_vertrag_invalid_dates(created_auto, created_kunde):
     assert response.json()["detail"] == "Startdatum muss vor Enddatum liegen."
 
 def test_create_vertrag_invalid_auto_id(created_kunde):
+    # Testet, dass das Erstellen eines Vertrags mit ungültiger Auto-ID 404 zurückgibt
     set_user_role("customer")
     vertrag = get_vertrag_template(
         999999,  # Nicht vorhandene Auto-ID
@@ -159,6 +174,7 @@ def test_create_vertrag_invalid_auto_id(created_kunde):
     assert "nicht gefunden" in response.json()["detail"]
 
 def test_create_vertrag_invalid_kunden_id(created_auto):
+    # Testet, dass das Erstellen eines Vertrags mit ungültiger Kunden-ID 404 zurückgibt
     set_user_role("customer")
     vertrag = get_vertrag_template(
         created_auto["id"],

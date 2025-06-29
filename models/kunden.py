@@ -5,12 +5,12 @@ from data_base import Base
 class Kunden(Base):
     __tablename__ = "kunden"
     
-    id = Column(Integer, primary_key=True, index=True)  # Primary key for the customer
-    vorname = Column(String(50), index=True, nullable=False)  # Customer's first name
-    nachname = Column(String(50), index=True, nullable=False)  # Customer's last name
-    geb_datum = Column(Date)  # Customer's date of birth
-    handy_nummer = Column(String(20), nullable=True)# Customer's phone number
-    email = Column(String, unique=True, index=True , nullable= False)  # Customer's email (unique)
+    id = Column(Integer, primary_key=True, index=True)  # Primärschlüssel für den Kunden
+    vorname = Column(String(50), index=True, nullable=False)  # Vorname des Kunden
+    nachname = Column(String(50), index=True, nullable=False)  # Nachname des Kunden
+    geb_datum = Column(Date)  # Geburtsdatum des Kunden
+    handy_nummer = Column(String(20), nullable=True)  # Telefonnummer des Kunden
+    email = Column(String, unique=True, index=True, nullable=False)  # E-Mail des Kunden (eindeutig)
 
-    # Relationship with Vertrag (contract) model, cascade delete on related records
+    # Beziehung zum Vertrag-Modell, Cascade-Löschung der zugehörigen Einträge
     vertraege = relationship("Vertrag", back_populates="kunde", cascade="all, delete")

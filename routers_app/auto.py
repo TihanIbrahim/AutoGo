@@ -12,24 +12,24 @@ from models.user import User
 logger = setup_logger(__name__)
 router = APIRouter(prefix="/api/v1")
 
-# Fetch the car by ID and ensure it's available
+# Auto anhand der ID abrufen und sicherstellen, dass es verfügbar ist
 def get_available_auto(db, auto_id: int) -> AutoModel:
     auto = db.query(AutoModel).filter(AutoModel.id == auto_id).first()
     if not auto:
         logger.warning(f"Auto mit ID {auto_id} nicht gefunden")
-        raise HTTPException(status_code=404, detail=f"Auto mit ID {auto_id} nicht gefunden.")  # بالألمانية
+        raise HTTPException(status_code=404, detail=f"Auto mit ID {auto_id} nicht gefunden.")  # Auf Deutsch
     if auto.status != AutoStatus.verfügbar:
         logger.warning("Auto derzeit nicht verfügbar")
-        raise HTTPException(status_code=400, detail="Das Auto ist momentan nicht verfügbar.")  # بالألمانية
+        raise HTTPException(status_code=400, detail="Das Auto ist momentan nicht verfügbar.")  # Auf Deutsch
     return auto
 
-# Check if the price per hour is valid (greater than 0)
+# Überprüfen, ob der Stundenpreis gültig ist (größer als 0)
 def validate_preis_pre_stunde(preis: float):
     if preis <= 0:
         logger.warning("Ungültiger Stundenpreis (<= 0)")
         raise HTTPException(status_code=400, detail="Der Stundenpreis muss größer als 0 sein.")
 
-# =================== Search for autos ===================
+# =================== Autos suchen ===================
 @router.get("/autos/search", response_model=List[Auto])
 def search_auto(
     brand: Optional[str] = Query(None, description="Marke des Autos"),
@@ -43,7 +43,7 @@ def search_auto(
 
     query = db.query(AutoModel)
 
-    # Apply filters if provided
+    # Filter anwenden, falls angegeben
     if brand:
         query = query.filter(AutoModel.brand.ilike(f"%{brand}%"))
     if model:
@@ -58,7 +58,7 @@ def search_auto(
     logger.info(f"{len(result)} Autos gefunden.")
     return result
 
-# =================== Calculate total rental price ===================
+# =================== Gesamten Mietpreis berechnen ===================
 @router.post("/autos/{auto_id}/calculate-price")
 def calculate_total_price(
     auto_id: int = Path(..., gt=0, description="Die ID des Autos (muss > 0 sein)"),
@@ -69,7 +69,7 @@ def calculate_total_price(
     logger.info(f"Gesamtpreisberechnung für Auto ID {auto_id} mit Mietdauer {mietdauer_stunden} Stunden")
     auto = get_available_auto(db, auto_id)
 
-    # Validate price before calculation
+    # Preis validieren vor der Berechnung
     validate_preis_pre_stunde(auto.preis_pro_stunde)
 
     total_price = auto.preis_pro_stunde * mietdauer_stunden

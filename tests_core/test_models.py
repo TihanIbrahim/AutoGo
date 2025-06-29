@@ -10,57 +10,57 @@ from models.user import User
 from datetime import date
 from security.hash import hash_password, verify
 
-# Use in-memory SQLite database for testing purposes to avoid side effects on real DB
+# Verwendung einer In-Memory SQLite-Datenbank zum Testen, um Nebeneffekte auf die echte DB zu vermeiden
 DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
-# Create a configured "Session" class
+# Erstellung einer konfigurierten Session-Klasse für die DB-Verbindung
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Pytest fixture to setup and teardown the database for each test function
+# Pytest Fixture zum Setup und Teardown der Datenbank für jeden Test
 @pytest.fixture(scope="function")
 def db():
-    # Create all tables in the test database before each test
+    # Erstelle alle Tabellen in der Testdatenbank vor jedem Test
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        yield db  # Provide the session to the test
+        yield db  # Übergibt die Session an den Test
     finally:
-        # Close session and drop all tables after the test runs to clean up
+        # Schließe die Session und lösche alle Tabellen nach dem Test zur Bereinigung
         db.close()
         Base.metadata.drop_all(bind=engine)
 
-# Test creating records for Auto, Kunden (Customer), Vertrag (Contract), and Zahlung (Payment)
+# Test zur Erstellung von Auto, Kunden, Vertrag und Zahlung
 def test_create_auto_vertrag_kunde(db):
-    # Create and add a car (Auto) instance
+    # Erstelle und füge ein Auto-Objekt hinzu
     auto = Auto(
         brand="BMW",
         model="sedan",
         jahr=2007,
         preis_pro_stunde=30,
-        status=AutoStatus.verfügbar # True means available
+        status=AutoStatus.verfügbar  # Auto ist verfügbar
     )
     db.add(auto)
     db.commit()
-    db.refresh(auto)  # Refresh to get the generated ID and other DB-set fields
+    db.refresh(auto)  # Aktualisiert das Objekt, um z.B. die DB-generierte ID zu erhalten
 
-    # Create and add a customer (Kunden) instance
+    # Erstelle und füge einen Kunden hinzu
     kunden = Kunden(
         vorname="Tihan",
         nachname="Ibrahim",
         geb_datum=date(2000, 8, 25),
-        handy_nummer="0947698022",
+        handy_nummer="0934556611",
         email="titor9424@gmail.com"
     )
     db.add(kunden)
     db.commit()
     db.refresh(kunden)
 
-    # Create and add a contract (Vertrag) linking Auto and Kunden
+    # Erstelle und füge einen Vertrag ein, der Auto und Kunden verbindet
     vertrag = Vertrag(
         auto_id=auto.id,
         kunden_id=kunden.id,
-        status= "aktiv",
+        status="aktiv",
         beginnt_datum=date(2000, 5, 25),
         beendet_datum=date(2000, 6, 25),
         total_preis=500
@@ -69,30 +69,29 @@ def test_create_auto_vertrag_kunde(db):
     db.commit()
     db.refresh(vertrag)
 
-    # Create and add a payment (Zahlung) linked to the contract
+    # Erstelle und füge eine Zahlung hinzu, die mit dem Vertrag verknüpft ist
     zahlung = Zahlung(
-        vertrag_id =vertrag.id,
+        vertrag_id=vertrag.id,
         zahlungsmethode=ZahlungsmethodeEnum.karte,
         datum=date(2025, 3, 11),
         status=ZahlungsStatusEnum.bezahlt,
         betrag=300.0
     )
-    
     db.add(zahlung)
     db.commit()
     db.refresh(zahlung)
 
-    # Assertions to verify that data is created correctly
-    assert vertrag.id is not None  # Contract ID should be assigned by DB
-    assert vertrag.auto_id == auto.id  # Contract's car ID matches created car
-    assert vertrag.kunden_id == kunden.id  # Contract's customer ID matches created customer
-    assert zahlung.vertrag_id == vertrag.id  # Payment linked to correct contract
-    assert auto.brand == "BMW"  # Car brand check
-    assert vertrag.kunde.vorname == "Tihan"  # Customer's first name via relationship
+    # Prüfungen, ob die Daten korrekt erstellt wurden
+    assert vertrag.id is not None  # Vertrag hat eine ID erhalten
+    assert vertrag.auto_id == auto.id  # Vertrag verweist auf korrektes Auto
+    assert vertrag.kunden_id == kunden.id  # Vertrag verweist auf korrekten Kunden
+    assert zahlung.vertrag_id == vertrag.id  # Zahlung ist mit dem Vertrag verknüpft
+    assert auto.brand == "BMW"  # Überprüfung der Automarke
+    assert vertrag.kunde.vorname == "Tihan"  # Zugriff auf Kunden-Relation im Vertrag
 
-# Test user creation and password hashing + verification
+# Test zur Erstellung eines Users sowie Passwort-Hashing und Verifikation
 def test_user(db):
-    # Create a user with hashed password
+    # Erstelle einen Benutzer mit gehashtem Passwort
     user = User(
         email="tihanibrahim@hotmail.com",
         hashed_password=hash_password("123456789tito")
@@ -101,10 +100,8 @@ def test_user(db):
     db.commit()
     db.refresh(user)
 
-    # Assertions to verify user creation and password check
-    assert user.id is not None  # User ID assigned by DB
-    assert user.email == "tihanibrahim@hotmail.com"  # Email matches
-    assert verify("123456789tito", user.hashed_password)  # Password verification should succeed
-    assert user.role == "customer"  # Default role check (assuming default set in model)
-
-    
+    # Prüfungen zur Validierung der User-Erstellung und Passwortüberprüfung
+    assert user.id is not None  # User hat eine ID erhalten
+    assert user.email == "tihanibrahim@hotmail.com"  # Email stimmt überein
+    assert verify("123456789tito", user.hashed_password)  # Passwortprüfung erfolgreich
+    assert user.role == "customer"  # Standardrolle ist "customer" (sofern im Model definiert)

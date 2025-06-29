@@ -13,17 +13,18 @@ from models.user import User
 logger = setup_logger(__name__)
 router = APIRouter(prefix="/api/v1/dashboard")
 
-# Helper function to fetch a car by ID or raise 404 error
+# Hilfsfunktion, um ein Auto anhand der ID zu holen oder 404 Fehler auszulösen
 def get_auto_by_id(db: Session, auto_id: int) -> AutoModel:
     auto = db.query(AutoModel).filter(AutoModel.id == auto_id).first()
     if not auto:
-        logger.warning(f"Auto mit ID {auto_id} nicht gefunden")  # Car not found
+        logger.warning(f"Auto mit ID {auto_id} nicht gefunden")  # Auto nicht gefunden
         raise HTTPException(status_code=404, detail=f"Auto mit ID {auto_id} nicht gefunden.")
     return auto
 
+# Stundenpreis validieren: muss größer als 0 sein
 def validate_preis_pre_stunde(preis: float):
     if preis <= 0:
-        logger.warning("Ungültiger Stundenpreis (<= 0)")  # Invalid hourly price
+        logger.warning("Ungültiger Stundenpreis (<= 0)")  # Ungültiger Stundenpreis
         raise HTTPException(status_code=400, detail="Der Stundenpreis muss größer als 0 sein.")
 
 # =================== Auto erstellen ===================
@@ -92,28 +93,25 @@ def delete_auto(
     logger.info(f"Dashboard: Auto mit ID {auto_id} wurde erfolgreich gelöscht")
     return
 
-
 # =================== Alle verfügbaren Autos anzeigen ===================
-# Endpoint to get all available cars
 @router.get("/autos", response_model=List[Auto])
 def show_all_auto(
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_or_viewer_required)
 ):
-    logger.info("Alle verfügbaren Autos werden abgerufen")  # Fetching all available cars
+    logger.info("Alle verfügbaren Autos werden abgerufen")  # Alle verfügbaren Autos holen
     autos = db.query(AutoModel).filter(AutoModel.status == AutoStatus.verfügbar).all()
     if not autos:
-        logger.info("Keine verfügbaren Autos gefunden")  # No cars available
+        logger.info("Keine verfügbaren Autos gefunden")  # Keine Autos verfügbar
     return autos
 
 # =================== Auto anzeigen ===================
-# Endpoint to get details of a specific car
 @router.get("/autos/{auto_id}", response_model=Auto)
 def show_auto(
     auto_id: int,
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)
 ):
-    logger.info(f"Auto mit ID {auto_id} wird angezeigt")  # Showing car
+    logger.info(f"Auto mit ID {auto_id} wird angezeigt")  # Auto anzeigen
     auto_details = get_auto_by_id(db, auto_id)
     return auto_details

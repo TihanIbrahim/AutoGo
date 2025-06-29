@@ -11,20 +11,20 @@ DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Fixture to setup and teardown in-memory database for each test function
+# Fixture zur Einrichtung und Aufräumung der In-Memory-Datenbank vor und nach jedem Test
 @pytest.fixture(scope="function")
 def db():
-    Base.metadata.create_all(bind=engine)  # Create tables
+    Base.metadata.create_all(bind=engine)  # Tabellen erstellen
     db = SessionLocal()
     try:
-        yield db  # Provide the session to the test
+        yield db  # Datenbanksession für Test bereitstellen
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)  # Drop tables after test
+        Base.metadata.drop_all(bind=engine)  # Tabellen nach Test löschen
 
 
+# Test für das Erstellen eines neuen Nutzers mit gültigen Daten
 def test_create_user(db):
-    # Test creating a new user with valid data
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
         password="Test-password-1@"
@@ -32,12 +32,12 @@ def test_create_user(db):
 
     user1 = create_user_service(request1, db)
 
-    # Verify user is created with hashed password (not plain)
+    # Verifiziere, dass der Nutzer mit gehashter (nicht roher) Passwort gespeichert wurde
     assert user1.email == request1.email
     assert user1.hashed_password != request1.password
     assert user1.hashed_password is not None
 
-    # Test creating a user with the same email should raise conflict error
+    # Versuch, denselben Nutzer nochmal zu erstellen, sollte einen Konflikt auslösen
     request2 = CreateRequest(
         email="lolo1234@gmail.com",
         password="Test-password-1@"
@@ -45,38 +45,36 @@ def test_create_user(db):
 
     with pytest.raises(HTTPException) as error:
         create_user_service(request2, db)
-    assert error.value.status_code == 409  # Conflict status
+    assert error.value.status_code == 409  # Konflikt-Status
 
 
+# Test für das Einloggen eines Nutzers mit korrekten Zugangsdaten
 def test_login_user(db):
-    # Prepare user in DB
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
         password="Test-password-2@"
     )
     user1 = create_user_service(request1, db)
 
-    # Test login with correct credentials
     logged_in_user = login_user(
         email="lolo1234@gmail.com",
         password="Test-password-2@",
         db=db
     )
 
-    # Verify the returned user email matches and password verifies correctly
+    # Verifiziere, dass der geloggte Nutzer dieselbe Email hat und Passwort geprüft wurde
     assert logged_in_user.email == request1.email
     assert verify(request1.password, logged_in_user.hashed_password)
 
 
+# Test für Login-Versuch mit falschem Passwort, sollte HTTP 401 zurückgeben
 def test_login_user_wrong_password(db):
-    # Prepare user in DB
     request1 = CreateRequest(
         email="lolo1234@gmail.com",
         password="Test-password-3@"
     )
     create_user_service(request1, db)
 
-    # Test login with incorrect password should raise HTTPException
     with pytest.raises(HTTPException) as error:
         login_user(
             email="lolo1234@gmail.com",
@@ -86,8 +84,8 @@ def test_login_user_wrong_password(db):
     assert error.value.status_code == 401  # Unauthorized
 
 
+# Test für Login-Versuch mit nicht existierender Email, sollte HTTP 401 zurückgeben
 def test_login_user_nonexistent_email(db):
-    # Test login with an email not in the database should raise HTTPException
     with pytest.raises(HTTPException) as error:
         login_user(
             email="nonexistent@gmail.com",

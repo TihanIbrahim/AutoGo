@@ -8,10 +8,11 @@ import secrets
 
 client = TestClient(app)
 
-# ---------- Helpers ----------
+# ---------- Hilfsfunktionen ----------
 
 def get_kunden_template():
-    # Returns a sample customer payload with randomized email to avoid conflicts
+    # Gibt ein Beispiel-Kunden-Datenobjekt zurück mit einer zufälligen E-Mail,
+    # damit keine Duplikate bei den Tests entstehen
     random_num= secrets.randbelow(100000) + 1 
     return {
         "vorname": "Test",
@@ -23,13 +24,15 @@ def get_kunden_template():
 
 @pytest.fixture(autouse=True)
 def clear_dependency_overrides():
-    # Automatically clear FastAPI dependency overrides after each test
+    # Setzt automatisch nach jedem Test die Dependency-Overrides von FastAPI zurück,
+    # damit sich Tests nicht gegenseitig beeinflussen
     yield
     app.dependency_overrides = {}
 
 @pytest.fixture
 def created_kunde():
-    # Creates a customer with role 'customer' and returns the created object for reuse
+    # Erzeugt einen Kunden mit der Rolle 'customer' und gibt das erstellte Objekt zurück,
+    # damit andere Tests dieses nutzen können
     set_user_role("customer")
     data = get_kunden_template()
     response = client.post("/api/v1/kunden", json=data)
@@ -38,13 +41,13 @@ def created_kunde():
 
 # ---------- Tests ----------
 
-# --- Create Kunden ---
+# --- Test zum Erstellen von Kunden mit unterschiedlichen Benutzerrollen ---
 @pytest.mark.parametrize("role, expected_status", [
     ("customer", 201),
     ("guest", 201),
 ])
 def test_create_kunden_permissions(role, expected_status):
-    # Test that different user roles can create customers with expected HTTP status codes
+    # Prüft, ob verschiedene Benutzerrollen Kunden anlegen können
     set_user_role(role)
     response = client.post("/api/v1/kunden", json=get_kunden_template())
     assert response.status_code == expected_status

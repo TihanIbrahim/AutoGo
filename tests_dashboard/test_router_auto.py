@@ -5,7 +5,7 @@ from tests_app.helpers import set_user_role
 
 client = TestClient(app)
 
-# Sample car data used for creating test autos
+# Beispiel-Daten für ein Auto, das in den Tests verwendet wird
 auto_template = {
     "brand": "BMW",
     "model": "sedan",
@@ -14,37 +14,37 @@ auto_template = {
     "status": "verfügbar"
 }
 
-# Fixture to clear dependency overrides after each test to avoid side effects
+# Fixture, um nach jedem Test die Dependency Overrides zurückzusetzen und Seiteneffekte zu vermeiden
 @pytest.fixture(autouse=True)
 def clear_dependency_overrides():
     yield
     app.dependency_overrides = {}
 
-# Fixture to create a car and return its ID, created as 'owner' role
+# Fixture, um ein Auto zu erstellen und dessen ID zurückzugeben, mit Rolle 'owner'
 @pytest.fixture
 def created_auto():
-    set_user_role("owner")
+    set_user_role("owner")  # Rolle auf 'owner' setzen, der Autos erstellen darf
     response = client.post("/api/v1/dashboard/autos", json=auto_template)
     assert response.status_code == 201
     return response.json()["id"]
 
-# Fixture to set user role before each test that requires it
+# Fixture, um die Nutzerrolle vor einem Test zu setzen
 @pytest.fixture
 def set_role(request):
     role = request.param
     set_user_role(role)
     yield
-    # any cleanup if needed
+    # Hier kann bei Bedarf aufgeräumt werden
 
-# ======= Test creating a car with different user roles =======
+# ======= Test: Auto erstellen mit verschiedenen Nutzerrollen =======
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 201),  # Owners can create cars successfully
-    ("viewer", 403), # Viewers are forbidden to create
-    ("editor", 403), # Editors are forbidden to create
+    ("owner", 201),  # Owner dürfen Autos erfolgreich erstellen
+    ("viewer", 403), # Viewer sind verboten, Autos zu erstellen
+    ("editor", 403), # Editor sind verboten, Autos zu erstellen
 ])
 def test_create_auto_by_role(role, expected_status):
-    set_user_role(role)  # Set the user role for the request
-    response = client.post("/api/v1/dashboard/autos", json=auto_template)  # Attempt to create a car
+    set_user_role(role)  # Nutzerrolle setzen
+    response = client.post("/api/v1/dashboard/autos", json=auto_template)  # Versuch Auto zu erstellen
 
     assert response.status_code == expected_status
 
@@ -53,22 +53,22 @@ def test_create_auto_by_role(role, expected_status):
         assert data["brand"] == "BMW"
         assert data["preis_pro_stunde"] == 30
 
-# ======= Test fetching all cars with different user roles =======
+# ======= Test: Alle Autos abrufen mit verschiedenen Nutzerrollen =======
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 200),  # Owners can fetch all cars
-    ("viewer", 200), # Viewers can also fetch all cars
-    ("editor", 403), # Editors are forbidden to fetch all cars
+    ("owner", 200),  # Owner dürfen alle Autos abrufen
+    ("viewer", 200), # Viewer dürfen ebenfalls alle Autos abrufen
+    ("editor", 403), # Editor sind verboten, alle Autos abzurufen
 ])
 def test_show_all_auto_forbidden_roles(role, expected_status):
     set_user_role(role)
-    response = client.get("/api/v1/dashboard/autos")  # Fetch all cars
+    response = client.get("/api/v1/dashboard/autos")  # Alle Autos abrufen
     assert response.status_code == expected_status
 
-# ======= Test fetching a car by ID with different user roles =======
+# ======= Test: Auto nach ID abrufen mit verschiedenen Nutzerrollen =======
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 200),  # Owners can view car details
-    ("viewer", 403), # Viewers are forbidden to view car by ID
-    ("editor", 403), # Editors are forbidden to view car by ID
+    ("owner", 200),  # Owner dürfen Autodetails ansehen
+    ("viewer", 403), # Viewer dürfen nicht nach ID abrufen
+    ("editor", 403), # Editor dürfen nicht nach ID abrufen
 ])
 def test_show_auto_by_id(role, expected_status, created_auto):
     set_user_role(role)
@@ -83,14 +83,14 @@ def test_show_auto_by_id(role, expected_status, created_auto):
         assert data["jahr"] == 2010
         assert data["model"] == "sedan"
 
-# ======= Test updating a car with different user roles =======
+# ======= Test: Auto aktualisieren mit verschiedenen Nutzerrollen =======
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 200),  # Owners can update
-    ("viewer", 403), # Viewers forbidden to update
-    ("editor", 200), # Editors allowed to update
+    ("owner", 200),  # Owner dürfen aktualisieren
+    ("viewer", 403), # Viewer verboten zu aktualisieren
+    ("editor", 200), # Editor dürfen aktualisieren
 ])
 def test_update_auto(role, expected_status, created_auto):
-    # Data to update
+    # Daten, die aktualisiert werden sollen
     update_data = {
         "brand": "bmw",
         "model": "coupe"
@@ -106,20 +106,19 @@ def test_update_auto(role, expected_status, created_auto):
         assert data["brand"] == "bmw"
         assert data["model"] == "coupe"
 
-# ======= Test deleting a car with different user roles =======
+# ======= Test: Auto löschen mit verschiedenen Nutzerrollen =======
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 204),  # Owners can delete successfully
-    ("editor", 403), # Editors forbidden to delete
-    ("viewer", 403), # Viewers forbidden to delete
+    ("owner", 204),  # Owner dürfen erfolgreich löschen
+    ("editor", 403), # Editor verboten zu löschen
+    ("viewer", 403), # Viewer verboten zu löschen
 ])
 def test_delete_auto(role, expected_status, created_auto):
     set_user_role(role)
     response = client.delete(f"/api/v1/dashboard/autos/{created_auto}")
     assert response.status_code == expected_status
 
-    # If deletion successful, verify the car is really deleted
+    # Falls Löschung erfolgreich war, prüfen, dass das Auto nicht mehr existiert
     if expected_status == 204:
-        set_user_role("owner")  # Owner to check existence
+        set_user_role("owner")  # Owner-Rolle setzen, um Verfügbarkeit zu prüfen
         get_resp = client.get(f"/api/v1/dashboard/autos/{created_auto}")
         assert get_resp.status_code == 404
-

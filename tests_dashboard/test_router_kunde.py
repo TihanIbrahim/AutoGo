@@ -1,34 +1,33 @@
 import pytest
-import random
+import secrets
 from fastapi.testclient import TestClient
 from main import app
 from tests_app.helpers import set_user_role  
-import secrets
 
 client = TestClient(app)
 
-# ---------- Helpers ----------
+# ---------- Hilfsfunktionen ----------
 
 def get_kunden_template():
-    """Returns a random valid customer data dictionary."""
-    random_num= secrets.randbelow(100000)+1
+    """Gibt ein zufälliges, gültiges Kundendaten-Dictionary zurück."""
+    random_num = secrets.randbelow(100000) + 1
     return {
         "vorname": "Test",
         "nachname": "User",
         "geb_datum": "2000-01-01",
         "handy_nummer": "0123456789",
-        "email" :f"user{random_num}@gmail.com"
+        "email": f"user{random_num}@gmail.com"
     }
 
 @pytest.fixture(autouse=True)
 def clear_dependency_overrides():
-    """Automatically clears dependency overrides after each test."""
+    """Setzt nach jedem Test automatisch Dependency-Overrides zurück."""
     yield
     app.dependency_overrides = {}
 
 @pytest.fixture
 def created_kunde():
-    """Creates a new customer for testing and returns the created object."""
+    """Erstellt vor dem Test einen Kunden mit Rolle 'owner' und gibt ihn zurück."""
     set_user_role("owner")
     data = get_kunden_template()
     response = client.post("/api/v1/dashboard/kunden", json=data)
@@ -37,102 +36,102 @@ def created_kunde():
 
 # ---------- Tests ----------
 
-# --- Create Kunden ---
+# --- Kunden erstellen ---
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 201),
-    ("viewer", 403),
-    ("editor", 403),
+    ("owner", 201),   # Owner dürfen Kunden erstellen
+    ("viewer", 403),  # Viewer dürfen nicht erstellen
+    ("editor", 403),  # Editor dürfen nicht erstellen
 ])
 def test_create_kunden_permissions(role, expected_status):
-    """Test that different user roles can create customers with expected HTTP status codes."""
+    """Überprüft, welche Rollen Kunden erstellen dürfen."""
     set_user_role(role)
     response = client.post("/api/v1/dashboard/kunden", json=get_kunden_template())
     assert response.status_code == expected_status
 
-# --- Show All Kunden ---
+# --- Alle Kunden anzeigen ---
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 200),
-    ("viewer", 200),
-    ("editor", 403),
+    ("owner", 200),   # Owner dürfen alle Kunden sehen
+    ("viewer", 200),  # Viewer dürfen alle Kunden sehen
+    ("editor", 403),  # Editor dürfen nicht alle Kunden sehen
 ])
 def test_view_all_kunden_permissions(role, expected_status):
-    """Test which roles are allowed to view all customers."""
+    """Testet Zugriffsrechte zum Abrufen aller Kunden."""
     set_user_role(role)
     response = client.get("/api/v1/dashboard/kunden")
     assert response.status_code == expected_status
 
-# --- Get Kunde by ID ---
+# --- Kunde nach ID anzeigen ---
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 200),
-    ("editor", 403),
-    ("viewer", 403),
+    ("owner", 200),   # Owner dürfen Kunden einzeln sehen
+    ("editor", 403),  # Editor dürfen das nicht
+    ("viewer", 403),  # Viewer dürfen das nicht
 ])
 def test_view_kunde_by_id_permissions(role, expected_status, created_kunde):
-    """Test which roles are allowed to view a customer by ID."""
+    """Testet Zugriffsrechte zum Abrufen eines Kunden nach ID."""
     set_user_role(role)
     kunde_id = created_kunde["id"]
     response = client.get(f"/api/v1/dashboard/kunden/{kunde_id}")
     assert response.status_code == expected_status
 
-# --- Update Kunde ---
+# --- Kunde aktualisieren ---
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 200),
-    ("editor", 200),
-    ("viewer", 403),
+    ("owner", 200),   # Owner dürfen Kunden aktualisieren
+    ("editor", 200),  # Editor dürfen Kunden aktualisieren
+    ("viewer", 403),  # Viewer dürfen das nicht
 ])
 def test_update_kunde_permissions(role, expected_status, created_kunde):
-    """Test which roles are allowed to update customer data."""
+    """Testet Zugriffsrechte zum Aktualisieren von Kundendaten."""
     set_user_role(role)
     kunde_id = created_kunde["id"]
     update_data = {"vorname": "Updated", "handy_nummer": "987654321"}
     response = client.put(f"/api/v1/dashboard/kunden/{kunde_id}", json=update_data)
     assert response.status_code == expected_status
 
-# --- Delete Kunde ---
+# --- Kunde löschen ---
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 204),
-    ("editor", 403),
-    ("viewer", 403),
+    ("owner", 204),   # Owner dürfen Kunden löschen
+    ("editor", 403),  # Editor dürfen das nicht
+    ("viewer", 403),  # Viewer dürfen das nicht
 ])
 def test_delete_kunde_permissions(role, expected_status, created_kunde):
-    """Test which roles are allowed to delete a customer."""
+    """Testet Zugriffsrechte zum Löschen eines Kunden."""
     set_user_role(role)
     kunde_id = created_kunde["id"]
     response = client.delete(f"/api/v1/dashboard/kunden/{kunde_id}")
     assert response.status_code == expected_status
 
-    # If deletion is allowed, confirm the customer is actually deleted
+    # Wenn Löschung erlaubt war, prüfen, dass Kunde nicht mehr existiert
     if expected_status == 204:
         get_response = client.get(f"/api/v1/dashboard/kunden/{kunde_id}")
         assert get_response.status_code == 404
 
-# --- Not Found Case: Get Non-existent Customer ---
+# --- Fehlerfall: Nicht vorhandenen Kunden abrufen ---
 def test_get_kunde_not_found():
-    """Test response when accessing a non-existent customer."""
+    """Testet Antwort beim Abrufen eines nicht existierenden Kunden."""
     set_user_role("owner")
     response = client.get("/api/v1/dashboard/kunden/999999")
     assert response.status_code == 404
 
-# --- Not Found Case: Update Non-existent Customer ---
+# --- Fehlerfall: Nicht vorhandenen Kunden aktualisieren ---
 def test_update_kunde_not_found():
-    """Test response when updating a non-existent customer."""
+    """Testet Antwort beim Aktualisieren eines nicht existierenden Kunden."""
     set_user_role("owner")
     update_data = {"vorname": "Ghost"}
     response = client.put("/api/v1/dashboard/kunden/999999", json=update_data)
     assert response.status_code == 404
 
-# --- Not Found Case: Delete Non-existent Customer ---
+# --- Fehlerfall: Nicht vorhandenen Kunden löschen ---
 def test_delete_kunde_not_found():
-    """Test response when deleting a non-existent customer."""
+    """Testet Antwort beim Löschen eines nicht existierenden Kunden."""
     set_user_role("owner")
     response = client.delete("/api/v1/dashboard/kunden/999999")
     assert response.status_code == 404
 
-# --- Invalid Input: Invalid Email Format ---
+# --- Ungültige Eingabe: Falsches Email-Format ---
 def test_create_kunde_invalid_email():
-    """Test creating a customer with an invalid email address."""
+    """Testet das Erstellen eines Kunden mit ungültiger E-Mail-Adresse."""
     set_user_role("owner")
     data = get_kunden_template()
-    data["email"] = "not-an-email"  # Invalid format
+    data["email"] = "not-an-email"  # Ungültiges Format
     response = client.post("/api/v1/dashboard/kunden", json=data)
-    assert response.status_code == 422  # FastAPI will return 422 for validation errors
+    assert response.status_code == 422  # Validierungsfehler von FastAPI

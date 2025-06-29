@@ -5,21 +5,21 @@ from datetime import timedelta, datetime
 import pytest
 from fastapi import HTTPException
 
-# Test password hashing and verification
+# Testet das Hashen und Verifizieren von Passwörtern
 def test_hashpassword_verify():
     password = "Test-password-1@"
     hashed_password = hash_password(password)
     
-    # The hashed password should not be the same as the raw password
+    # Das gehashte Passwort sollte nicht mit dem Klartextpasswort identisch sein
     assert hashed_password != password
     
-    # Verify returns True for correct password
+    # Verifikation gibt True zurück, wenn das Passwort korrekt ist
     assert verify(password, hashed_password)
     
-    # Verify returns False for incorrect password
+    # Verifikation gibt False zurück, wenn das Passwort falsch ist
     assert not verify("falsche password", hashed_password)
 
-# Test creation and decoding of JWT token
+# Testet die Erstellung und das Decodieren eines JWT-Tokens
 def test_create_token_contents():
     token = create_token(
         email="titor9412@gmail.com",
@@ -27,27 +27,28 @@ def test_create_token_contents():
         expires_delta=timedelta(minutes=30)
     )
     
-    # Decode the JWT token and check payload contents
+    # JWT-Token decodieren und Inhalte im Payload prüfen
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     assert payload.get("sub") == "titor9412@gmail.com"
     assert payload.get("id") == 0
     assert len(token) > 0
     assert isinstance(token, str)
 
-# Test handling of expired token raises HTTPException
+# Testet, ob ein abgelaufener Token eine HTTPException wirft
 def test_expired_token():
     token = create_token(
         email="tihanibrahim@gmail.com",
         user_id=12345,
-        expires_delta=timedelta(seconds=-1)  # Already expired token
+        expires_delta=timedelta(seconds=-1)  # Token ist bereits abgelaufen
     )
     with pytest.raises(HTTPException) as error:
         decode_token(token)
+    # Erwartet wird ein 401 Unauthorized Fehler
     assert error.value.status_code == 401
 
-# Test decoding a token missing required fields raises HTTPException
+# Testet, ob das Decodieren eines Tokens ohne erforderliche Felder eine HTTPException auslöst
 def test_token_missing_fields():
-    # Create a token with only expiration, missing 'sub' and 'id'
+    # Erstelle ein Token nur mit Ablaufdatum, ohne 'sub' und 'id'
     token_missing_fields = jwt.encode(
         {"exp": datetime.utcnow() + timedelta(minutes=30)},
         SECRET_KEY,
@@ -55,4 +56,5 @@ def test_token_missing_fields():
     )
     with pytest.raises(HTTPException) as error:
         decode_token(token_missing_fields)
+    # Erwartet wird ein 401 Unauthorized Fehler
     assert error.value.status_code == 401

@@ -3,8 +3,7 @@ from data_base import Base
 from sqlalchemy.orm import relationship
 from enum import Enum as pyEnum
 
-
-# Payment method enumeration defining possible payment types such as card, bank transfer, PayPal, Stripe, and Klarna. 
+# Aufzählung der Zahlungsmethoden, definiert mögliche Zahlungsarten wie Karte, Überweisung, PayPal, Stripe und Klarna
 class ZahlungsmethodeEnum(pyEnum):
     karte = "karte"
     überweisung = "überweisung"
@@ -12,7 +11,7 @@ class ZahlungsmethodeEnum(pyEnum):
     stripe = "stripe"
     klarna = "Klarna"
 
-# Payment status enumeration representing different states of a payment like paid, open, cancelled, partial, and refunded.
+# Aufzählung des Zahlungsstatus, repräsentiert verschiedene Zahlungszustände wie bezahlt, offen, abgebrochen, teilweise und zurückerstattet
 class ZahlungsStatusEnum(pyEnum):
     bezahlt = "bezahlt"
     offen = "offen"
@@ -20,15 +19,14 @@ class ZahlungsStatusEnum(pyEnum):
     teilweise = "teilweise"
     zurückerstattet = "zurückerstattet"
 
-
 class Zahlung(Base):
-    __tablename__ = "zahlung"  # Table name in the database
+    __tablename__ = "zahlung"  # Tabellenname in der Datenbank
 
-    id = Column(Integer, primary_key=True, index=True)  # Unique ID for the payment
-    vertrag_id = Column(Integer, ForeignKey("vertrag.id"), index=True, nullable=False)  # Reference to the related contract
-    zahlungsmethode = Column(Enum(ZahlungsmethodeEnum), index=True, nullable=False)  # Payment method (e.g. cash, card)
-    datum = Column(Date, index=True, nullable=False)  # Date of payment
-    status = Column(Enum(ZahlungsStatusEnum), index=True , nullable=False)  # Status of the payment (e.g. paid, pending)
-    betrag = Column(Float, index=True,nullable=False)  # Amount paid
+    id = Column(Integer, primary_key=True, index=True)  # Eindeutige ID für die Zahlung
+    vertrag_id = Column(Integer, ForeignKey("vertrag.id"), index=True, nullable=False)  # Referenz zum zugehörigen Vertrag
+    zahlungsmethode = Column(Enum(ZahlungsmethodeEnum), index=True, nullable=False)  # Zahlungsmethode (z.B. Karte, Überweisung)
+    datum = Column(Date, index=True, nullable=False)  # Zahlungsdatum
+    status = Column(Enum(ZahlungsStatusEnum), index=True, nullable=False)  # Zahlungsstatus (z.B. bezahlt, offen)
+    betrag = Column(Float, index=True, nullable=False)  # Bezahlt Betrag
 
-    vertrag = relationship("Vertrag", back_populates="zahlungen")  # Link to the related contract
+    vertrag = relationship("Vertrag", back_populates="zahlungen")  # Verbindung zum zugehörigen Vertrag

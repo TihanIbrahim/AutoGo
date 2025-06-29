@@ -1,21 +1,16 @@
 import logging
 
 def setup_logger(name=None):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)  # Set log level to INFO
+    logger = logging.getLogger(name)  # Logger mit einem Namen erstellen oder Standardlogger verwenden
+    logger.setLevel(logging.INFO)     # Log-Level auf INFO setzen
 
-    # Only add handler if there isn't one already to avoid duplicates
-    if not logger.hasHandlers():
-        ch = logging.StreamHandler()  # Create console handler
-        ch.setLevel(logging.INFO)  # Set console handler log level
+    if not logger.hasHandlers():      # Nur Handler hinzufügen, wenn noch keine vorhanden sind
+        ch = logging.StreamHandler()  # Konsole als Ausgabekanal erstellen
+        ch.setLevel(logging.INFO)      # Log-Level für den Handler auf INFO setzen
 
-        # Define log message format
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)  # Apply format to console handler
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')  # Format für Log-Nachrichten definieren
+        ch.setFormatter(formatter)    # Format auf den Handler anwenden
 
-        logger.addHandler(ch)  # Add console handler to logger
+        logger.addHandler(ch)          # Handler zum Logger hinzufügen
 
-    return logger  # Return configured logger
-
-
-
+    return logger                     # Konfigurierten Logger zurückgeben

@@ -3,23 +3,22 @@ from sqlalchemy.orm import relationship
 from data_base import Base
 from enum import Enum as pyEnum
 
-
 class VertragStatus(pyEnum):
-    aktiv     =  "aktiv"      # Active
-    beendet   =  "beendet"    # Ended
-    gekündigt =  "gekündigt"  # Terminated
+    aktiv     =  "aktiv"      # Aktiv
+    beendet   =  "beendet"    # Beendet
+    gekündigt =  "gekündigt"  # Gekündigt
 
 class Vertrag(Base):
     __tablename__ = "vertrag"
 
-    id = Column(Integer, primary_key=True, index=True)  # Contract ID
-    auto_id = Column(Integer, ForeignKey("auto.id"), nullable=False)  # Car ID
-    kunden_id = Column(Integer, ForeignKey("kunden.id"), nullable=False)  # Customer ID
-    status = Column(Enum(VertragStatus), index=True, nullable=False)  # Contract status
-    beginnt_datum = Column(Date, nullable=False)  # Start date
-    beendet_datum = Column(Date)  # End date
-    total_preis = Column(Float)  # Total price
+    id = Column(Integer, primary_key=True, index=True)  # Vertrags-ID
+    auto_id = Column(Integer, ForeignKey("auto.id"), nullable=False)  # Fahrzeug-ID
+    kunden_id = Column(Integer, ForeignKey("kunden.id"), nullable=False)  # Kunden-ID
+    status = Column(Enum(VertragStatus), index=True, nullable=False)  # Vertragsstatus
+    beginnt_datum = Column(Date, nullable=False)  # Beginndatum
+    beendet_datum = Column(Date)  # Enddatum
+    total_preis = Column(Float)  # Gesamtpreis
 
-    auto = relationship("Auto", back_populates="vertraege")  # Car relation
-    kunde = relationship("Kunden", back_populates="vertraege")  # Customer relation
-    zahlungen = relationship("Zahlung", back_populates="vertrag")  # Payments relation
+    auto = relationship("Auto", back_populates="vertraege")  # Beziehung zum Fahrzeug
+    kunde = relationship("Kunden", back_populates="vertraege")  # Beziehung zum Kunden
+    zahlungen = relationship("Zahlung", back_populates="vertrag")  # Beziehung zu Zahlungen

@@ -1,10 +1,9 @@
 # ⚙️ Autovermietungssystem mit FastAPI
 
-Ein Web-API-Projekt zur Verwaltung einer Autovermietung, entwickelt mit **FastAPI** und **PostgreSQL**.  
-Das System ist vollständig mit **Docker** integriert, um eine einfache Ausführung und Bereitstellung zu ermöglichen.
-
+Ein Web-API-Projekt zur Verwaltung einer Autovermietung, entwickelt mit FastAPI und PostgreSQL.
+Das System ist vollständig mit Docker integriert, um eine einfache Ausführung und Bereitstellung zu ermöglichen.
 Das Projekt umfasst die Verwaltung von Kunden, Autos, Verträgen, Zahlungen und Benutzern.
-
+Die API bietet separate Endpunkte für die Web-Anwendung und das Dashboard zur Verwaltung und Überwachung des Systems.
 ---
 
 ## 🛠️ Verwendete Technologien

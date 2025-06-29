@@ -1,17 +1,16 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-import random
-from tests_app.helpers import set_user_role
 import secrets
+from tests_app.helpers import set_user_role
 
 client = TestClient(app)
 
-# ========== Fixtures for reusable input data ==========
+# ========== Fixtures für wiederverwendbare Eingabedaten ==========
 
-# Sample data for a car
 @pytest.fixture
 def auto_template():
+    """Beispiel-Daten für ein Auto."""
     return {
         "brand": "BMW",
         "model": "sedan",
@@ -20,9 +19,9 @@ def auto_template():
         "status": "verfügbar"
     }
 
-# Randomized customer data
 @pytest.fixture
 def generate_kunden_data():
+    """Erstellt zufällige Kundendaten mit eindeutiger Email."""
     random_num= secrets.randbelow(100000)+1
     return {
         "vorname": "Tihan",
@@ -32,9 +31,9 @@ def generate_kunden_data():
         "email" :f"user{random_num}@gmail.com"
     }
 
-# Sample data for a payment
 @pytest.fixture
 def zahlung_template():
+    """Beispiel-Daten für eine Zahlung."""
     return {
         "zahlungsmethode": "karte",
         "datum": "2025-06-01",
@@ -42,27 +41,27 @@ def zahlung_template():
         "betrag": 300.0
     }
 
-# ========== Fixtures to create actual resources via API ==========
+# ========== Fixtures zum Erstellen von Ressourcen über die API ==========
 
-# Create a car and return its ID
 @pytest.fixture
 def auto_id(auto_template):
+    """Erstellt ein Auto und gibt die ID zurück."""
     set_user_role("owner")
     response = client.post("/api/v1/dashboard/autos", json=auto_template)
     assert response.status_code == 201
     return response.json()["id"]
 
-# Create a customer and return its ID
 @pytest.fixture
 def kunde_id(generate_kunden_data):
+    """Erstellt einen Kunden und gibt die ID zurück."""
     set_user_role("owner")
     response = client.post("/api/v1/dashboard/kunden", json=generate_kunden_data)
     assert response.status_code == 201
     return response.json()["id"]
 
-# Create a contract and return its ID
 @pytest.fixture
 def vertrag_id(auto_id, kunde_id):
+    """Erstellt einen Vertrag und gibt die ID zurück."""
     contract = {
         "auto_id": auto_id,
         "kunden_id": kunde_id,
@@ -76,46 +75,45 @@ def vertrag_id(auto_id, kunde_id):
     assert response.status_code == 201
     return response.json()["id"]
 
-# Clear dependency overrides after each test
 @pytest.fixture(autouse=True)
 def clear_overrides():
+    """Setzt nach jedem Test Dependency-Overrides zurück."""
     yield
     app.dependency_overrides = {}
 
-# ========== Parametrized Tests ==========
+# ========== Parametrisierte Tests ==========
 
-# Test which roles are allowed to create a payment
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 201),
-    ("editor", 403),
-    ("viewer", 403),
+    ("owner", 201),   # Owner dürfen Zahlungen anlegen
+    ("editor", 403),  # Editor nicht erlaubt
+    ("viewer", 403),  # Viewer nicht erlaubt
 ])
 def test_create_zahlung_permissions(role, expected_status, vertrag_id, zahlung_template):
+    """Testet, welche Rollen Zahlungen anlegen dürfen."""
     set_user_role(role)
     zahlung_data = zahlung_template.copy()
     zahlung_data["vertrag_id"] = vertrag_id
     response = client.post("/api/v1/dashboard/zahlungen", json=zahlung_data)
     assert response.status_code == expected_status
 
-# Test which roles can retrieve all payments
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 200),
-    ("editor", 403),
-    ("viewer", 200),
+    ("owner", 200),   # Owner dürfen alle Zahlungen sehen
+    ("editor", 403),  # Editor nicht erlaubt
+    ("viewer", 200),  # Viewer dürfen alle Zahlungen sehen
 ])
 def test_list_zahlungen_permissions(role, expected_status):
+    """Testet, welche Rollen Zahlungen abrufen dürfen."""
     set_user_role(role)
     response = client.get("/api/v1/dashboard/zahlungen")
     assert response.status_code == expected_status
 
-# Test which roles can update a payment
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 200),
-    ("editor", 200),  # editor is assumed to have update rights
-    ("viewer", 403)
+    ("owner", 200),   # Owner dürfen Zahlungen aktualisieren
+    ("editor", 200),  # Editor dürfen Zahlungen aktualisieren
+    ("viewer", 403),  # Viewer dürfen nicht aktualisieren
 ])
 def test_update_zahlung_permissions(role, expected_status, vertrag_id, zahlung_template):
-    # First, create a payment
+    """Testet Aktualisierungsrechte für Zahlungen je Rolle."""
     set_user_role("owner")
     zahlung_data = zahlung_template.copy()
     zahlung_data["vertrag_id"] = vertrag_id
@@ -123,7 +121,6 @@ def test_update_zahlung_permissions(role, expected_status, vertrag_id, zahlung_t
     assert response.status_code == 201
     zahlung_id = response.json()["id"]
 
-    # Try updating the payment with the specified role
     set_user_role(role)
     zahlung_update = zahlung_template.copy()
     zahlung_update["betrag"] = 999.99
@@ -132,19 +129,17 @@ def test_update_zahlung_permissions(role, expected_status, vertrag_id, zahlung_t
     response = client.put(f"/api/v1/dashboard/zahlungen/{zahlung_id}", json=zahlung_update)
     assert response.status_code == expected_status
 
-    # If update succeeded, verify the change
     if expected_status == 200:
         updated = response.json()
         assert updated["betrag"] == 999.99
 
-# Test which roles can delete a payment
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 204),
-    ("editor", 403),
-    ("viewer", 403)
+    ("owner", 204),   # Owner dürfen Zahlungen löschen
+    ("editor", 403),  # Editor nicht erlaubt
+    ("viewer", 403),  # Viewer nicht erlaubt
 ])
 def test_delete_zahlung_permissions(role, expected_status, vertrag_id, zahlung_template):
-    # Create a payment first
+    """Testet Löschrechte für Zahlungen je Rolle."""
     set_user_role("owner")
     zahlung_data = zahlung_template.copy()
     zahlung_data["vertrag_id"] = vertrag_id
@@ -152,14 +147,12 @@ def test_delete_zahlung_permissions(role, expected_status, vertrag_id, zahlung_t
     assert response.status_code == 201
     zahlung_id = response.json()["id"]
 
-    # Try deleting with the given role
     set_user_role(role)
     response = client.delete(f"/api/v1/dashboard/zahlungen/{zahlung_id}")
     assert response.status_code == expected_status
 
-
-# Optional: Test Not Found cases for update and delete
 def test_update_zahlung_not_found():
+    """Testet Fehler 404 beim Aktualisieren einer nicht existierenden Zahlung."""
     set_user_role("owner")
     response = client.put("/api/v1/dashboard/zahlungen/999999", json={
         "vertrag_id": 1,
@@ -171,6 +164,7 @@ def test_update_zahlung_not_found():
     assert response.status_code == 404
 
 def test_delete_zahlung_not_found():
+    """Testet Fehler 404 beim Löschen einer nicht existierenden Zahlung."""
     set_user_role("owner")
     response = client.delete("/api/v1/dashboard/zahlungen/999999")
     assert response.status_code == 404
