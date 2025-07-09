@@ -1,5 +1,5 @@
 from services.auth_service import create_user_service, login_user
-from security.hash import hash_password, verify
+from core.security.hash import verify
 from schemas.auth_schemas import CreateRequest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-import random
 from tests_app.helpers import set_user_role
 import secrets
 

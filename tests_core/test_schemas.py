@@ -1,12 +1,16 @@
+import pytest
 from pydantic import ValidationError
+from datetime import date
+import secrets
+
 from schemas.auto import AutoBase
 from schemas.vertrag import VertragBase
 from schemas.kunden import KundenBase
 from schemas.zahlung import ZahlungBase, ZahlungsStatusEnum, ZahlungsmethodeEnum
 from schemas.auth_schemas import CreateRequest, TokenData
-import pytest
-from datetime import date
-import secrets
+
+
+
 
 # ------------------------------
 # Tests für AutoBase-Schema
@@ -57,13 +61,13 @@ def test_valid_kunde_schema():
         vorname="Tihan",
         nachname="Ibrahim",
         geb_datum=date(2000, 8, 25),
-        handy_nummer="0947698022",
+        handy_nummer="0900000000",
         email="titor9424@gmail.com"
     )
     assert kunde.vorname == "Tihan"
     assert kunde.nachname == "Ibrahim"
     assert kunde.geb_datum == date(2000, 8, 25)
-    assert kunde.handy_nummer == "0947698022"
+    assert kunde.handy_nummer == "0900000000"
     assert kunde.email == "titor9424@gmail.com"
 
 # Kombinierter Test für ungültige Email und fehlende Pflichtfelder 'handy_nummer' und 'email'
@@ -74,7 +78,7 @@ def test_invalid_or_missing_kunde_schema():
             vorname="Tihan",
             nachname="Ibrahim",
             geb_datum=date(2000, 8, 25),
-            handy_nummer="0947698022",
+            handy_nummer="0900000000",
             email="invalid_email"  # Ungültige Email
         )
     # Fehlende Pflichtfelder 'handy_nummer' und 'email'

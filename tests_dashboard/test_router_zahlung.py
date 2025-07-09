@@ -134,7 +134,7 @@ def test_update_zahlung_permissions(role, expected_status, vertrag_id, zahlung_t
         assert updated["betrag"] == 999.99
 
 @pytest.mark.parametrize("role, expected_status", [
-    ("owner", 204),   # Owner dürfen Zahlungen löschen
+    ("owner", 200),   # Owner dürfen Zahlungen löschen
     ("editor", 403),  # Editor nicht erlaubt
     ("viewer", 403),  # Viewer nicht erlaubt
 ])

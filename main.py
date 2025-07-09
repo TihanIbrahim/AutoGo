@@ -2,17 +2,17 @@ from fastapi import FastAPI
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Router für die App
-from routers_app import auto as app_auto
-from routers_app import kunden as app_kunden
-from routers_app import vertrag as app_vertrag
-from routers_app import zahlung as app_zahlung
-from routers_app import auth
+from routers.app import auto as app_auto
+from routers.app import kunden as app_kunden
+from routers.app import vertrag as app_vertrag
+from routers.app import zahlung as app_zahlung
+from routers.app import auth 
 
 # Router für das Dashboard
-from routers_dashboard import auto as dashboard_auto
-from routers_dashboard import kunden as dashboard_kunden
-from routers_dashboard import vertrag as dashboard_vertrag
-from routers_dashboard import zahlung as dashboard_zahlung
+from routers.dashboard import auto as dashboard_auto
+from routers.dashboard import kunden as dashboard_kunden
+from routers.dashboard import vertrag as dashboard_vertrag
+from routers.dashboard import zahlung as dashboard_zahlung
 
 # Services & Datenbank
 from services.vertrag_service import zwischenstatus_aktualisieren

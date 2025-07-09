@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from security.hash import hash_password, verify
+from core.security.hash import hash_password, verify
 from schemas.auth_schemas import CreateRequest
 from models.user import User
 from fastapi import HTTPException
-from logger_config import setup_logger
+from core.logger_config import setup_logger
 
 # Initialize logger
 logger = setup_logger(__name__)

@@ -1,5 +1,4 @@
 import pytest
-import random
 from datetime import date
 from fastapi.testclient import TestClient
 from main import app

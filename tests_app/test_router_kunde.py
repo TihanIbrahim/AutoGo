@@ -1,5 +1,4 @@
 import pytest
-import random
 from fastapi.testclient import TestClient
 from main import app
 from tests_app.helpers import set_user_role

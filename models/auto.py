@@ -24,3 +24,4 @@ class Auto(Base):
     
     # Beziehung zum Vertrag-Modell
     vertraege = relationship("Vertrag", back_populates="auto")
+

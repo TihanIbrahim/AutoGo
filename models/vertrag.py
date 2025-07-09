@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Date, Boolean, Float, ForeignKey, Enum
+from sqlalchemy import Column, Integer, Date,Float, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from data_base import Base
 from enum import Enum as pyEnum
@@ -22,3 +22,4 @@ class Vertrag(Base):
     auto = relationship("Auto", back_populates="vertraege")  # Beziehung zum Fahrzeug
     kunde = relationship("Kunden", back_populates="vertraege")  # Beziehung zum Kunden
     zahlungen = relationship("Zahlung", back_populates="vertrag")  # Beziehung zu Zahlungen
+

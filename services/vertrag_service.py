@@ -1,6 +1,6 @@
 from datetime import date
 from sqlalchemy.orm import Session
-from logger_config import setup_logger
+from core.logger_config import setup_logger
 from data_base import get_database_session  
 
 
