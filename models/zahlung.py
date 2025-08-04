@@ -30,3 +30,4 @@ class Zahlung(Base):
     betrag = Column(Float, index=True, nullable=False)  # Bezahlt Betrag
 
     vertrag = relationship("Vertrag", back_populates="zahlungen")  # Verbindung zum zugehörigen Vertrag
+

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from schemas.auth_schemas import CreateRequest  
 from services.auth_service import create_user_service, login_user  
-from data_base import get_database_Session
+from data_base import get_database_session
 from core.logger_config import setup_logger
 
 logger = setup_logger(__name__)
@@ -15,7 +15,7 @@ router = APIRouter()
     summary="Registriert einen neuen Benutzer"
 )
 
-def register(request: CreateRequest, db: Session = Depends(get_database_Session)):
+def register(request: CreateRequest, db: Session = Depends(get_database_session)):
     logger.info(f"Registrierungsversuch für E-Mail: {request.email}")
     try:
         create_user_service(request, db)
@@ -34,7 +34,7 @@ def register(request: CreateRequest, db: Session = Depends(get_database_Session)
     status_code=status.HTTP_200_OK,
     summary="Benutzer anmelden"
 )
-def login(request: CreateRequest, db: Session = Depends(get_database_Session)):
+def login(request: CreateRequest, db: Session = Depends(get_database_session)):
     logger.info(f"Login-Versuch für E-Mail: {request.email}")
     try:
         user = login_user(request.email, request.password, db)
@@ -46,3 +46,5 @@ def login(request: CreateRequest, db: Session = Depends(get_database_Session)):
     except Exception:
         logger.error(f"Fehler während des Logins für {request.email}")
         raise HTTPException(status_code=500, detail="Fehler während des Logins")
+
+

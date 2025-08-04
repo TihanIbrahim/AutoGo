@@ -14,38 +14,31 @@ auto_template = {
     "status": "verfügbar"
 }
 
-# Fixture, um nach jedem Test die Dependency Overrides zurückzusetzen und Seiteneffekte zu vermeiden
+# Fixture: Setzt dependency overrides nach jedem Test zurück
 @pytest.fixture(autouse=True)
 def clear_dependency_overrides():
     yield
     app.dependency_overrides = {}
 
-# Fixture, um ein Auto zu erstellen und dessen ID zurückzugeben, mit Rolle 'owner'
+# Fixture: Erstellt ein Auto mit der Rolle 'owner' und gibt die ID zurück
 @pytest.fixture
 def created_auto():
-    set_user_role("owner")  # Rolle auf 'owner' setzen, der Autos erstellen darf
+    set_user_role("owner")
     response = client.post("/api/v1/dashboard/autos", json=auto_template)
     assert response.status_code == 201
     return response.json()["id"]
 
-# Fixture, um die Nutzerrolle vor einem Test zu setzen
-@pytest.fixture
-def set_role(request):
-    role = request.param
-    set_user_role(role)
-    yield
-    # Hier kann bei Bedarf aufgeräumt werden
+# ===================== Tests =====================
 
-# ======= Test: Auto erstellen mit verschiedenen Nutzerrollen =======
+# Test: Auto erstellen mit verschiedenen Nutzerrollen
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 201),  # Owner dürfen Autos erfolgreich erstellen
-    ("viewer", 403), # Viewer sind verboten, Autos zu erstellen
-    ("editor", 403), # Editor sind verboten, Autos zu erstellen
+    ("owner", 201),
+    ("viewer", 403),
+    ("editor", 403),
 ])
 def test_create_auto_by_role(role, expected_status):
-    set_user_role(role)  # Nutzerrolle setzen
-    response = client.post("/api/v1/dashboard/autos", json=auto_template)  # Versuch Auto zu erstellen
-
+    set_user_role(role)
+    response = client.post("/api/v1/dashboard/autos", json=auto_template)
     assert response.status_code == expected_status
 
     if expected_status == 201:
@@ -53,27 +46,26 @@ def test_create_auto_by_role(role, expected_status):
         assert data["brand"] == "BMW"
         assert data["preis_pro_stunde"] == 30
 
-# ======= Test: Alle Autos abrufen mit verschiedenen Nutzerrollen =======
+# Test: Alle Autos abrufen mit verschiedenen Nutzerrollen
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 200),  # Owner dürfen alle Autos abrufen
-    ("viewer", 200), # Viewer dürfen ebenfalls alle Autos abrufen
-    ("editor", 403), # Editor sind verboten, alle Autos abzurufen
+    ("owner", 200),
+    ("viewer", 200),
+    ("editor", 403),
 ])
 def test_show_all_auto_forbidden_roles(role, expected_status):
     set_user_role(role)
-    response = client.get("/api/v1/dashboard/autos")  # Alle Autos abrufen
+    response = client.get("/api/v1/dashboard/autos")
     assert response.status_code == expected_status
 
-# ======= Test: Auto nach ID abrufen mit verschiedenen Nutzerrollen =======
+# Test: Auto nach ID abrufen mit verschiedenen Nutzerrollen
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 200),  # Owner dürfen Autodetails ansehen
-    ("viewer", 403), # Viewer dürfen nicht nach ID abrufen
-    ("editor", 403), # Editor dürfen nicht nach ID abrufen
+    ("owner", 200),
+    ("viewer", 403),
+    ("editor", 403),
 ])
 def test_show_auto_by_id(role, expected_status, created_auto):
     set_user_role(role)
     response = client.get(f"/api/v1/dashboard/autos/{created_auto}")
-
     assert response.status_code == expected_status
 
     if expected_status == 200:
@@ -83,14 +75,13 @@ def test_show_auto_by_id(role, expected_status, created_auto):
         assert data["jahr"] == 2010
         assert data["model"] == "sedan"
 
-# ======= Test: Auto aktualisieren mit verschiedenen Nutzerrollen =======
-@pytest.mark.parametrize("role, expected_status", [
-    ("owner", 200),  # Owner dürfen aktualisieren
-    ("viewer", 403), # Viewer verboten zu aktualisieren
-    ("editor", 200), # Editor dürfen aktualisieren
+# Test: Auto aktualisieren mit verschiedenen Nutzerrollen
+@pytest.mark.parametrize(("role", "expected_status"), [
+    ("owner", 200),
+    ("viewer", 403),
+    ("editor", 200),
 ])
 def test_update_auto(role, expected_status, created_auto):
-    # Daten, die aktualisiert werden sollen
     update_data = {
         "brand": "bmw",
         "model": "coupe"
@@ -98,7 +89,6 @@ def test_update_auto(role, expected_status, created_auto):
 
     set_user_role(role)
     response = client.put(f"/api/v1/dashboard/autos/{created_auto}", json=update_data)
-
     assert response.status_code == expected_status
 
     if expected_status == 200:
@@ -106,19 +96,19 @@ def test_update_auto(role, expected_status, created_auto):
         assert data["brand"] == "bmw"
         assert data["model"] == "coupe"
 
-# ======= Test: Auto löschen mit verschiedenen Nutzerrollen =======
+# Test: Auto löschen mit verschiedenen Nutzerrollen
 @pytest.mark.parametrize(("role", "expected_status"), [
-    ("owner", 204),  # Owner dürfen erfolgreich löschen
-    ("editor", 403), # Editor verboten zu löschen
-    ("viewer", 403), # Viewer verboten zu löschen
+    ("owner", 204),
+    ("editor", 403),
+    ("viewer", 403),
 ])
 def test_delete_auto(role, expected_status, created_auto):
     set_user_role(role)
     response = client.delete(f"/api/v1/dashboard/autos/{created_auto}")
     assert response.status_code == expected_status
 
-    # Falls Löschung erfolgreich war, prüfen, dass das Auto nicht mehr existiert
     if expected_status == 204:
-        set_user_role("owner")  # Owner-Rolle setzen, um Verfügbarkeit zu prüfen
+        # Prüfen, ob das Auto tatsächlich gelöscht wurde
+        set_user_role("owner")
         get_resp = client.get(f"/api/v1/dashboard/autos/{created_auto}")
         assert get_resp.status_code == 404

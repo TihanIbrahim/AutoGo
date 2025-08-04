@@ -30,7 +30,7 @@ def test_search_auto(role, expected_status):
     set_user_role("owner")  
     create_resp = client.post("/api/v1/dashboard/autos", json=auto_template)
     assert create_resp.status_code == 201
-
+ 
     # Rolle für den Test setzen
     set_user_role(role)  
 

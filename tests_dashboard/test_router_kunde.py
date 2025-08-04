@@ -8,6 +8,12 @@ client = TestClient(app)
 
 # ---------- Hilfsfunktionen ----------
 
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides():
+    yield
+    app.dependency_overrides = {}
+
+
 def get_kunden_template():
     """Gibt ein zufälliges, gültiges Kundendaten-Dictionary zurück."""
     random_num = secrets.randbelow(100000) + 1
@@ -18,12 +24,6 @@ def get_kunden_template():
         "handy_nummer": "0123456789",
         "email": f"user{random_num}@gmail.com"
     }
-
-@pytest.fixture(autouse=True)
-def clear_dependency_overrides():
-    """Setzt nach jedem Test automatisch Dependency-Overrides zurück."""
-    yield
-    app.dependency_overrides = {}
 
 @pytest.fixture
 def created_kunde():

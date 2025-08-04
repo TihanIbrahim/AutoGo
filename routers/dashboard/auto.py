@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends , Path
 from sqlalchemy.orm import Session
 from typing import List 
 
@@ -35,6 +35,7 @@ def validate_preis_pre_stunde(preis: float):
 )
 def create_auto(
     auto: AutoCreate,
+    status_code=201,
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)
 ):
@@ -58,6 +59,7 @@ def create_auto(
 @router.put(
     "/autos/{auto_id}",
     response_model=Auto,
+    status_code=200,
     summary="Auto-Daten aktualisieren"
 )
 def update_auto(
@@ -128,7 +130,7 @@ def show_all_auto(
     summary="Details eines Autos anzeigen"
 )
 def show_auto(
-    auto_id: int,
+    auto_id: int = Path(..., gt=0, description="Die ID des autos (muss > 0 sein)"),
     db: Session = Depends(get_database_session),
     current_user: User = Depends(owner_required)
 ):

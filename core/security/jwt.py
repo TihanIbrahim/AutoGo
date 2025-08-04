@@ -5,34 +5,33 @@ from schemas.auth_schemas import TokenData
 from core.logger_config import setup_logger
 from core.config import SECRET_KEY, ALGORITHM
 
-# Set up logger
+# Logger einrichten
 logger = setup_logger(__name__)
 
-# Function to create a JWT token
+# Funktion zum Erstellen eines JWT-Tokens
 def create_token(email: str, user_id: int, expires_delta: timedelta) -> str:
     to_encode = {
-        "sub": email,
-        "id": user_id,
-        "exp": datetime.utcnow() + expires_delta
+        "sub": email,     # E-Mail als "subject" im Token speichern
+        "id": user_id,    # Benutzer-ID speichern
+        "exp": datetime.utcnow() + expires_delta  # Ablaufdatum berechnen
     }
-    logger.info(f"Token created for user ID: {user_id}")
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    logger.info(f"Token für Benutzer-ID {user_id} erstellt")
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)  # Token erstellen und zurückgeben
 
-# Function to decode a JWT token
+# Funktion zum Entschlüsseln eines JWT-Tokens
 def decode_token(token: str) -> TokenData:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        logger.info("Token successfully decoded")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])  # Token dekodieren
+        logger.info("Token erfolgreich dekodiert")
     except JWTError:
-        logger.warning("Token decoding failed")
-        raise HTTPException(status_code=401, detail="Invalid token")
+        logger.warning("Fehler beim Dekodieren des Tokens")
+        raise HTTPException(status_code=401, detail="Ungültiges Token")  # Fehler bei ungültigem Token
     
-    email = payload.get("sub")
-    user_id = payload.get("id")
+    email = payload.get("sub")     # E-Mail extrahieren
+    user_id = payload.get("id")    # Benutzer-ID extrahieren
 
     if not email or not user_id:
-        logger.warning("Invalid token data: missing email or ID")
-        raise HTTPException(status_code=401, detail="Invalid token data")
+        logger.warning("Ungültige Token-Daten: E-Mail oder ID fehlt")
+        raise HTTPException(status_code=401, detail="Ungültige Token-Daten")
 
-    return TokenData(email=email, id=user_id)
-
+    return TokenData(email=email, id=user_id)  # Token-Daten als Objekt zurückgeben

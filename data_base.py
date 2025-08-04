@@ -21,3 +21,4 @@ def get_database_session():
         yield db  # gibt die Session zurück
     finally:
         db.close()  # schließt die Session danach
+        

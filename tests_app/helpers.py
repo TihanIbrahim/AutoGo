@@ -6,4 +6,4 @@ def set_user_role(role: str):
         def __init__(self, role):
             self.role = role
             self.id = 1  
-    app.dependency_overrides[get_current_user] = lambda: User(role)
+    app.dependency_overrides[get_current_user] = lambda: User(role) 

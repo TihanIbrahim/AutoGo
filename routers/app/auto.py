@@ -3,11 +3,12 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from models.auto import Auto as AutoModel, AutoStatus
 from schemas.auto import Auto
-from data_base import get_database_session
-from core.logger_config import setup_logger
-from datetime import datetime
-from services.dependencies import customer_or_guest_required
 from models.user import User
+from data_base import get_database_session
+from datetime import datetime
+from core.logger_config import setup_logger
+from services.dependencies import customer_or_guest_required
+
 
 logger = setup_logger(__name__)
 router = APIRouter(prefix="/api/v1")
@@ -17,10 +18,10 @@ def get_available_auto(db:Session, auto_id: int) -> AutoModel:
     auto = db.query(AutoModel).filter(AutoModel.id == auto_id).first()
     if not auto:
         logger.warning(f"Auto mit ID {auto_id} nicht gefunden")
-        raise HTTPException(status_code=404, detail=f"Auto mit ID {auto_id} nicht gefunden.")  # Auf Deutsch
+        raise HTTPException(status_code=404, detail=f"Auto mit ID {auto_id} nicht gefunden.")  
     if auto.status != AutoStatus.verfügbar:
         logger.warning("Auto derzeit nicht verfügbar")
-        raise HTTPException(status_code=400, detail="Das Auto ist momentan nicht verfügbar.")  # Auf Deutsch
+        raise HTTPException(status_code=400, detail="Das Auto ist momentan nicht verfügbar.")  
     return auto
 
 # Überprüfen, ob der Stundenpreis gültig ist (größer als 0)
@@ -34,7 +35,7 @@ def validate_preis_pre_stunde(preis: float):
     "/autos/search",
     response_model=List[Auto],
     status_code=200,
-    summary="Search autos by brand, model, year and status")
+    summary="Suche Autos nach Marke, Modell, Baujahr und Status")
 def search_auto(
     brand: Optional[str] = Query(None, description="Marke des Autos"),
     model: Optional[str] = Query(None, description="Modell des Autos"),
