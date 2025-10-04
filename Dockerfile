@@ -1,4 +1,4 @@
-FROM python:3.13.5
+FROM python:3.14.0rc3
 
 RUN apt-get update && \
     apt-get upgrade -y && \
